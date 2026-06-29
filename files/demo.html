@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SkillPath AI — Career Advisory Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#050A14;color:#fff;font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:3px}
+::selection{background:rgba(99,102,241,0.35);color:#fff}
+.page{display:none;min-height:100vh}
+.page.active{display:flex;flex-direction:column}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-18px)}}
+@keyframes pulse-orb{0%,100%{opacity:.25}50%{opacity:.6}}
+@keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes glow{0%,100%{box-shadow:0 0 20px rgba(99,102,241,.3)}50%{box-shadow:0 0 44px rgba(99,102,241,.65)}}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes pop{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;animation:pulse-orb 4s ease-in-out infinite}
+.slide-up{animation:slideUp .6s ease both}
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:16px 36px;background:rgba(5,10,20,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:200}
+.logo{display:flex;align-items:center;gap:10px;font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#fff}
+.logo-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#10b981);display:flex;align-items:center;justify-content:center;font-size:14px}
+.nav-tabs{display:flex;gap:4px}
+.nav-tab{background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;padding:9px 18px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;border-radius:10px;transition:all .2s;display:flex;align-items:center;gap:6px}
+.nav-tab:hover{color:rgba(255,255,255,.8);background:rgba(255,255,255,.05)}
+.nav-tab.active{color:#fff;background:rgba(99,102,241,.2)}
+.nav-tab.admin-active{background:rgba(245,158,11,.15)}
+/* BUTTONS */
+.btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:12px;padding:13px 28px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .25s;animation:glow 3s ease infinite}
+.btn-primary:hover{transform:translateY(-2px)}
+.btn-outline{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:13px 28px;color:rgba(255,255,255,.8);font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.btn-outline:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.22)}
+.btn-sm{padding:7px 16px;font-size:12px;border-radius:8px}
+/* CARDS */
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:18px}
+.card:hover{border-color:rgba(99,102,241,.3)}
+/* INPUTS */
+.input-f{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:12px 16px;color:#fff;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s}
+.input-f:focus{border-color:rgba(99,102,241,.6);background:rgba(99,102,241,.05)}
+.input-f::placeholder{color:rgba(255,255,255,.28)}
+/* PILL */
+.pill{display:inline-block;padding:3px 11px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.3px}
+/* PROGRESS */
+.prog-track{background:rgba(255,255,255,.07);border-radius:4px;height:5px}
+.prog-fill{height:5px;border-radius:4px}
+/* STAT CARD */
+.stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;transition:transform .2s}
+.stat:hover{transform:translateY(-2px)}
+/* COURSE CARD */
+.course-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:18px;overflow:hidden;cursor:pointer;transition:all .3s}
+.course-card:hover{border-color:rgba(99,102,241,.4);transform:translateY(-4px);background:rgba(255,255,255,.07)}
+/* CHAT */
+.chat-box{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:20px;height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.bubble-ai{max-width:78%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:18px 18px 18px 4px;padding:13px 16px;font-size:14px;line-height:1.65}
+.bubble-user{max-width:78%;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:18px 18px 4px 18px;padding:13px 16px;font-size:14px;line-height:1.65;align-self:flex-end}
+.chat-input-row{display:flex;gap:10px;margin-top:12px}
+.chat-input{flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 16px;color:#fff;font-size:14px;outline:none;font-family:'DM Sans',sans-serif}
+.chat-input:focus{border-color:rgba(99,102,241,.5)}
+.chat-input::placeholder{color:rgba(255,255,255,.25)}
+/* AUTH MODAL */
+.auth-card{background:rgba(255,255,255,.04);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:38px 36px;width:100%;max-width:400px;animation:pop .4s ease both}
+.tab-toggle{display:flex;background:rgba(255,255,255,.05);border-radius:10px;padding:4px}
+.tab-toggle button{flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+/* LESSON ROW */
+.lesson-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;cursor:pointer;border:1px solid transparent;transition:all .2s}
+.lesson-row:hover{background:rgba(255,255,255,.05)}
+.lesson-row.active{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.3)}
+/* QUIZ */
+.opt-btn{display:block;width:100%;text-align:left;padding:13px 16px;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#fff;transition:all .2s;margin-bottom:8px}
+.opt-btn:hover{border-color:rgba(99,102,241,.5);background:rgba(99,102,241,.1)}
+.opt-btn.selected{border-color:#6366f1;background:rgba(99,102,241,.2)}
+.opt-btn.correct{border-color:#10b981;background:rgba(16,185,129,.15);color:#6ee7b7}
+.opt-btn.wrong{border-color:#ef4444;background:rgba(239,68,68,.1);color:#fca5a5}
+/* DATA TABLE */
+.data-table{width:100%;border-collapse:collapse}
+.data-table th{font-size:11px;font-weight:600;color:rgba(255,255,255,.35);letter-spacing:.5px;text-transform:uppercase;padding:12px 16px;text-align:left;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02)}
+.data-table td{padding:14px 16px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.05);color:rgba(255,255,255,.8)}
+.data-table tr:hover td{background:rgba(255,255,255,.03)}
+/* TICKER */
+.ticker-wrap{background:rgba(255,255,255,.04);border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);overflow:hidden;white-space:nowrap;padding:10px 0}
+.ticker-inner{display:inline-block;animation:ticker 28s linear infinite}
+/* CERT PREVIEW */
+.cert-preview{background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(16,185,129,.1));border:1px solid rgba(99,102,241,.3);border-radius:24px;padding:44px 40px;text-align:center;animation:pop .5s ease both}
+/* RESPONSIVE */
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.courses-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
+@media(max-width:900px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:repeat(2,1fr)}.grid-2{grid-template-columns:1fr}.nav-tabs{display:none}}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ LANDING PAGE ═══ -->
+<div id="page-landing" class="page active">
+  <div style="position:relative;overflow:hidden;flex:1;display:flex;flex-direction:column">
+    <div class="orb" style="width:500px;height:500px;background:rgba(99,102,241,.14);top:-120px;right:-100px"></div>
+    <div class="orb" style="width:400px;height:400px;background:rgba(16,185,129,.1);bottom:-60px;left:-80px;animation-delay:2s"></div>
+    <div class="orb" style="width:300px;height:300px;background:rgba(245,158,11,.08);top:40%;left:35%;animation-delay:1s"></div>
+
+    <!-- Navbar -->
+    <nav style="display:flex;align-items:center;justify-content:space-between;padding:20px 40px;position:relative;z-index:10">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="logo-icon">🧭</div>
+        <span style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800">SkillPath<span style="color:#6366f1">AI</span></span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-outline btn-sm" onclick="showAuth('user','login')">Sign in</button>
+        <button style="background:linear-gradient(135deg,#f59e0b,#ef4444);border:none;border-radius:8px;padding:8px 18px;color:#fff;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500" onclick="showAuth('admin')">Admin</button>
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px 20px;text-align:center;position:relative;z-index:5" class="slide-up">
+      <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:100px;padding:8px 20px;display:inline-flex;align-items:center;gap:8px;margin-bottom:28px">
+        <span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block"></span>
+        <span style="font-size:12px;color:rgba(255,255,255,.65)">100% Free · No Credit Card · Instant Certificates</span>
+      </div>
+      <h1 style="font-family:'Syne',sans-serif;font-size:clamp(40px,6vw,78px);font-weight:800;color:#fff;line-height:1.05;letter-spacing:-2px;margin:0 0 20px;max-width:820px">
+        Your AI-Powered<br><span style="background:linear-gradient(90deg,#6366f1,#10b981,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Career Growth Engine</span>
+      </h1>
+      <p style="font-size:16px;color:rgba(255,255,255,.5);max-width:520px;line-height:1.75;margin:0 0 40px">
+        Free courses. AI career advice. Skill gap analysis. Downloadable certificates. Everything in one place.
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+        <button class="btn-primary" onclick="showAuth('user','signup')">Start learning free →</button>
+        <button class="btn-outline" onclick="showAuth('user','login')">Sign in</button>
+      </div>
+      <div style="display:flex;gap:40px;margin-top:56px;flex-wrap:wrap;justify-content:center">
+        <div style="text-align:center"><div style="font-family:'Syne',sans-serif;font-size:30px;font-weight:800">50+</div><div style="font-size:12px;color:rgba(255,255,255,.35);margin-top:3px">Free Courses</div></div>
+        <div style="text-align:center"><div style="font-family:'Syne',sans-serif;font-size:30px;font-weight:800">10K+</div><div style="font-size:12px;color:rgba(255,255,255,.35);margin-top:3px">Learners</div></div>
+        <div style="text-align:center"><div style="font-family:'Syne',sans-serif;font-size:30px;font-weight:800">95%</div><div style="font-size:12px;color:rgba(255,255,255,.35);margin-top:3px">Job Match Rate</div></div>
+        <div style="text-align:center"><div style="font-family:'Syne',sans-serif;font-size:30px;font-weight:800">∞</div><div style="font-size:12px;color:rgba(255,255,255,.35);margin-top:3px">Certificates</div></div>
+      </div>
+    </div>
+
+    <!-- Ticker -->
+    <div class="ticker-wrap" style="margin:30px 0 0">
+      <div class="ticker-inner" id="ticker"></div>
+    </div>
+
+    <!-- Role cards -->
+    <div style="padding:44px 40px 60px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;max-width:960px;margin:0 auto;width:100%;box-sizing:border-box">
+      <div class="card" style="padding:26px 22px;cursor:pointer;transition:all .3s" onclick="showAuth('user','signup')">
+        <div style="font-size:26px;margin-bottom:12px">🎓</div>
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:6px">Students</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.4);line-height:1.55">Learn in-demand skills alongside your degree</div>
+        <div style="width:28px;height:3px;border-radius:2px;background:#6366f1;margin-top:16px"></div>
+      </div>
+      <div class="card" style="padding:26px 22px;cursor:pointer;transition:all .3s" onclick="showAuth('user','signup')">
+        <div style="font-size:26px;margin-bottom:12px">💼</div>
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:6px">Professionals</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.4);line-height:1.55">Upskill and pivot your career with AI guidance</div>
+        <div style="width:28px;height:3px;border-radius:2px;background:#10b981;margin-top:16px"></div>
+      </div>
+      <div class="card" style="padding:26px 22px;cursor:pointer;transition:all .3s" onclick="showAuth('user','signup')">
+        <div style="font-size:26px;margin-bottom:12px">🔄</div>
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:6px">Career Switchers</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.4);line-height:1.55">Find your next path with a personalized roadmap</div>
+        <div style="width:28px;height:3px;border-radius:2px;background:#f59e0b;margin-top:16px"></div>
+      </div>
+      <div class="card" style="padding:26px 22px;cursor:pointer;transition:all .3s" onclick="showAuth('user','signup')">
+        <div style="font-size:26px;margin-bottom:12px">✦</div>
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:6px">AI Advisor</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.4);line-height:1.55">24/7 career guidance tailored just for you</div>
+        <div style="width:28px;height:3px;border-radius:2px;background:#ec4899;margin-top:16px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ AUTH OVERLAY ════ -->
+<div id="auth-overlay" style="display:none;position:fixed;inset:0;background:rgba(5,10,20,.85);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center">
+  <div class="auth-card">
+    <button onclick="hideAuth()" style="background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;margin-bottom:22px;display:flex;align-items:center;gap:5px">← Back</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:26px">
+      <div id="auth-icon" style="width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#6366f1,#10b981);display:flex;align-items:center;justify-content:center;font-size:18px">👤</div>
+      <div>
+        <div id="auth-title" style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800">Welcome back</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.35)">SkillPath AI</div>
+      </div>
+    </div>
+    <div id="auth-toggle-row" class="tab-toggle" style="margin-bottom:22px">
+      <button id="toggle-login" onclick="setAuthMode('login')" style="background:rgba(99,102,241,.8);color:#fff">Sign in</button>
+      <button id="toggle-signup" onclick="setAuthMode('signup')" style="background:transparent;color:rgba(255,255,255,.4)">Sign up</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:13px">
+      <input id="auth-name" class="input-f" placeholder="Full name" style="display:none"/>
+      <input id="auth-email" class="input-f" type="email" placeholder="Email address"/>
+      <input id="auth-password" class="input-f" type="password" placeholder="Password"/>
+      <select id="auth-role" class="input-f" style="display:none;background:#0d1220">
+        <option>Student</option><option>Working Professional</option><option>Career Switcher</option><option>Fresher</option>
+      </select>
+      <input id="auth-adminkey" class="input-f" type="password" placeholder="Admin secret key" style="display:none"/>
+      <div id="auth-error" style="display:none;font-size:13px;color:#f87171;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:10px 14px"></div>
+      <button id="auth-submit" class="btn-primary" style="width:100%;margin-top:4px" onclick="handleAuth()">Sign in →</button>
+    </div>
+    <p id="auth-hint" style="font-size:12px;color:rgba(255,255,255,.22);text-align:center;margin-top:18px;line-height:1.5">100% free. No credit card required.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ STUDENT DASHBOARD -->
+<div id="page-dashboard" class="page">
+  <!-- Topbar -->
+  <header class="nav">
+    <div class="logo"><div class="logo-icon">🧭</div>SkillPath<span style="color:#6366f1">AI</span></div>
+    <nav class="nav-tabs">
+      <button class="nav-tab active" id="tab-home" onclick="switchTab('home')">⊞ Home</button>
+      <button class="nav-tab" id="tab-courses" onclick="switchTab('courses')">📚 Courses</button>
+      <button class="nav-tab" id="tab-advisor" onclick="switchTab('advisor')">✦ AI Advisor</button>
+      <button class="nav-tab" id="tab-certs" onclick="switchTab('certs')">🏅 Certificates</button>
+      <button class="nav-tab" id="tab-profile" onclick="switchTab('profile')">◎ Profile</button>
+    </nav>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div id="user-avatar" style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">U</div>
+      <button class="btn-outline btn-sm" onclick="doLogout()">Logout</button>
+    </div>
+  </header>
+  <main style="flex:1;padding:28px 32px 48px;max-width:1100px;margin:0 auto;width:100%;box-sizing:border-box" class="slide-up">
+
+    <!-- HOME TAB -->
+    <div id="content-home">
+      <div style="margin-bottom:26px">
+        <h1 style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;margin:0 0 4px">Hey, <span id="greet-name">Learner</span> 👋</h1>
+        <p style="color:rgba(255,255,255,.4);font-size:14px;margin:0">Continue your journey — you're doing great!</p>
+      </div>
+      <div class="grid-4" style="margin-bottom:30px">
+        <div class="stat"><div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800">3</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">Courses active</div><div style="width:28px;height:3px;border-radius:2px;background:#6366f1;margin-top:12px"></div></div>
+        <div class="stat"><div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800">2</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">Certificates earned</div><div style="width:28px;height:3px;border-radius:2px;background:#10b981;margin-top:12px"></div></div>
+        <div class="stat"><div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800">65%</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">Avg. progress</div><div style="width:28px;height:3px;border-radius:2px;background:#f59e0b;margin-top:12px"></div></div>
+        <div class="stat"><div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800">850</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">Skill score</div><div style="width:28px;height:3px;border-radius:2px;background:#ec4899;margin-top:12px"></div></div>
+      </div>
+      <h2 style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:16px">Continue learning <span style="background:#1a2e1a;color:#4ade80;font-size:11px;padding:3px 10px;border-radius:20px;font-family:'DM Sans',sans-serif;font-weight:600">All Free</span></h2>
+      <div class="courses-grid" id="home-courses"></div>
+      <div style="background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(16,185,129,.1));border:1px solid rgba(99,102,241,.25);border-radius:18px;padding:22px 26px;display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:28px;flex-wrap:wrap">
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin-bottom:5px">🎯 Your AI career advisor is ready</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.5)">Get a personalized career roadmap based on your skills</div>
+        </div>
+        <button class="btn-primary btn-sm" onclick="switchTab('advisor')">Chat now →</button>
+      </div>
+    </div>
+
+    <!-- COURSES TAB -->
+    <div id="content-courses" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+        <h1 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin:0">All Courses <span style="color:#10b981;font-size:14px;font-weight:500">· 100% Free</span></h1>
+      </div>
+      <input class="input-f" placeholder="🔍  Search courses..." id="search-input" oninput="filterCourses()" style="margin-bottom:14px"/>
+      <div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:22px;padding-bottom:4px" id="cat-filters"></div>
+      <div class="courses-grid" id="all-courses"></div>
+    </div>
+
+    <!-- ADVISOR TAB -->
+    <div id="content-advisor" style="display:none">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px">
+        <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:20px">✦</div>
+        <div><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800">AI Career Advisor</div><div style="font-size:12px;color:rgba(255,255,255,.4)">Powered by SkillPath AI · Always available</div></div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block"></span><span style="font-size:12px;color:rgba(255,255,255,.4)">Online</span></div>
+      </div>
+      <div class="chat-box" id="chat-messages">
+        <div style="display:flex"><div class="bubble-ai"><div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:5px;letter-spacing:.5px;text-transform:uppercase">SkillPath AI</div>Hi! 👋 I'm your AI Career Advisor. Based on your profile, I can see you're building strong Python and ML skills. What career are you aiming for? I'll create a personalized roadmap for you!</div></div>
+      </div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="chat-input" placeholder="Ask about careers, skills, courses..." onkeydown="if(event.key==='Enter')sendChat()"/>
+        <button class="btn-primary btn-sm" onclick="sendChat()" style="padding:12px 20px;font-size:16px">→</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button onclick="document.getElementById('chat-input').value='What career suits me?';sendChat()" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:6px 14px;color:rgba(255,255,255,.5);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif">What career suits me?</button>
+        <button onclick="document.getElementById('chat-input').value='Give me a 3-month study plan';sendChat()" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:6px 14px;color:rgba(255,255,255,.5);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif">3-month study plan</button>
+        <button onclick="document.getElementById('chat-input').value='Best paying tech jobs in India';sendChat()" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:6px 14px;color:rgba(255,255,255,.5);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif">Best paying tech jobs</button>
+        <button onclick="document.getElementById('chat-input').value='Analyse my skill gap for Data Engineer';sendChat()" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:6px 14px;color:rgba(255,255,255,.5);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif">Skill gap analysis</button>
+      </div>
+    </div>
+
+    <!-- CERTS TAB -->
+    <div id="content-certs" style="display:none">
+      <h1 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin:0 0 22px">My Certificates</h1>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:28px">
+        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="width:50px;height:50px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🏅</div>
+          <div style="flex:1"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700">Python for Beginners</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:3px">Issued Jan 12, 2025 · ID: SKP-2025-0112AB</div></div>
+          <button onclick="downloadCert('SKP-2025-0112AB','Python for Beginners')" style="background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);border-radius:8px;padding:8px 16px;color:#a5b4fc;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap">⬇ Download PDF</button>
+        </div>
+        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="width:50px;height:50px;background:linear-gradient(135deg,#10b981,#059669);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🏅</div>
+          <div style="flex:1"><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700">SQL & Database Fundamentals</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:3px">Issued Feb 28, 2025 · ID: SKP-2025-0228CD</div></div>
+          <button onclick="downloadCert('SKP-2025-0228CD','SQL & Database Fundamentals')" style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.35);border-radius:8px;padding:8px 16px;color:#6ee7b7;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap">⬇ Download PDF</button>
+        </div>
+      </div>
+      <div style="background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.15);border-radius:16px;padding:22px 26px;text-align:center">
+        <div style="font-size:28px;margin-bottom:10px">🎯</div>
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:6px">Complete a course to earn more</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:16px">Pass the final quiz and your certificate generates instantly</div>
+        <button class="btn-primary btn-sm" onclick="switchTab('courses')">Browse courses →</button>
+      </div>
+    </div>
+
+    <!-- PROFILE TAB -->
+    <div id="content-profile" style="display:none">
+      <h1 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin:0 0 22px">My Profile</h1>
+      <div class="grid-2">
+        <div class="card" style="padding:24px">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+            <div id="profile-avatar" style="width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700">U</div>
+            <div><div id="profile-name" style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800">Learner</div><div id="profile-role" style="font-size:12px;color:rgba(255,255,255,.4)">Student</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0">
+            <div style="display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.05);padding:10px 0"><span style="font-size:12px;color:rgba(255,255,255,.35)">Email</span><span id="profile-email" style="font-size:13px;color:rgba(255,255,255,.8)">-</span></div>
+            <div style="display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.05);padding:10px 0"><span style="font-size:12px;color:rgba(255,255,255,.35)">Role</span><span id="profile-role2" style="font-size:13px;color:rgba(255,255,255,.8)">Student</span></div>
+            <div style="display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.05);padding:10px 0"><span style="font-size:12px;color:rgba(255,255,255,.35)">Member since</span><span style="font-size:13px;color:rgba(255,255,255,.8)">April 2025</span></div>
+            <div style="display:flex;justify-content:space-between;padding:10px 0"><span style="font-size:12px;color:rgba(255,255,255,.35)">Certificates</span><span style="font-size:13px;color:rgba(255,255,255,.8)">2</span></div>
+          </div>
+        </div>
+        <div class="card" style="padding:24px">
+          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:18px">My Skills</div>
+          <div id="skill-bars"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════ COURSE PLAYER PAGE ════ -->
+<div id="page-course" class="page">
+  <header class="nav">
+    <button class="btn-outline btn-sm" onclick="goBack()">← Back</button>
+    <div style="display:flex;align-items:center;gap:10px;flex:1;margin:0 16px">
+      <span id="course-thumb" style="font-size:20px">📚</span>
+      <div><div id="course-title-header" style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700">Course</div><div id="course-meta-header" style="font-size:12px;color:rgba(255,255,255,.35)">0 lessons</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span id="course-progress-label" style="font-size:12px;color:rgba(255,255,255,.4)">0% done</span>
+      <div style="width:90px;background:rgba(255,255,255,.08);border-radius:4px;height:5px"><div id="course-progress-bar" style="height:5px;border-radius:4px;background:linear-gradient(90deg,#6366f1,#10b981);width:0%"></div></div>
+    </div>
+  </header>
+  <div style="display:flex;flex:1;overflow:hidden">
+    <aside style="width:290px;min-width:290px;border-right:1px solid rgba(255,255,255,.07);padding:18px 14px;overflow-y:auto">
+      <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,.3);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">Curriculum</div>
+      <div id="lesson-list"></div>
+    </aside>
+    <main style="flex:1;padding:28px 32px;overflow-y:auto" id="course-main-content"></main>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ ADMIN DASHBOARD ════════ -->
+<div id="page-admin" class="page">
+  <header class="nav" style="border-bottom-color:rgba(245,158,11,.18)">
+    <div class="logo"><div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#f59e0b,#ef4444);display:flex;align-items:center;justify-content:center;font-size:14px">🛡</div>SkillPath <span style="color:#f59e0b">Admin</span><span style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);border-radius:6px;padding:3px 10px;font-size:10px;color:#fbbf24;margin-left:6px;font-family:'DM Sans',sans-serif;font-weight:600">ADMIN</span></div>
+    <nav class="nav-tabs">
+      <button class="nav-tab active admin-active" id="atab-overview" onclick="switchAdminTab('overview')">⊞ Overview</button>
+      <button class="nav-tab" id="atab-users" onclick="switchAdminTab('users')">◎ Users</button>
+      <button class="nav-tab" id="atab-courses" onclick="switchAdminTab('courses')">📚 Courses</button>
+      <button class="nav-tab" id="atab-analytics" onclick="switchAdminTab('analytics')">📈 Analytics</button>
+    </nav>
+    <button onclick="doLogout()" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.22);border-radius:8px;padding:7px 16px;color:#f87171;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">Logout</button>
+  </header>
+  <main style="flex:1;padding:28px 32px 48px;max-width:1100px;margin:0 auto;width:100%;box-sizing:border-box" class="slide-up">
+    <div id="admin-content-overview"></div>
+    <div id="admin-content-users" style="display:none"></div>
+    <div id="admin-content-courses" style="display:none"></div>
+    <div id="admin-content-analytics" style="display:none"></div>
+  </main>
+</div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const COURSES = [
+  {id:1,title:"Machine Learning with Python",category:"ML & AI",lessons:14,hours:6,thumb:"🤖",color:"#6366f1",rating:4.9,enrolled:true,progress:65},
+  {id:2,title:"Full Stack React & Node.js",category:"Web Dev",lessons:22,hours:9,thumb:"⚛️",color:"#10b981",enrolled:true,progress:30},
+  {id:3,title:"Data Analysis with Pandas",category:"Data Science",lessons:16,hours:7,thumb:"📊",color:"#f59e0b",enrolled:true,progress:10},
+  {id:4,title:"System Design Fundamentals",category:"Engineering",lessons:10,hours:5,thumb:"🏗️",color:"#ec4899",enrolled:false,progress:0,rating:4.9},
+  {id:5,title:"AWS Cloud Practitioner",category:"Cloud",lessons:18,hours:8,thumb:"☁️",color:"#0ea5e9",enrolled:false,progress:0,rating:4.6},
+  {id:6,title:"Cybersecurity Essentials",category:"Security",lessons:12,hours:5,thumb:"🔐",color:"#8b5cf6",enrolled:false,progress:0,rating:4.8},
+  {id:7,title:"DevOps with Docker & K8s",category:"DevOps",lessons:15,hours:7,thumb:"🐳",color:"#06b6d4",enrolled:false,progress:0,rating:4.7},
+  {id:8,title:"Resume & Interview Prep",category:"Career Skills",lessons:8,hours:2,thumb:"📝",color:"#f97316",enrolled:false,progress:0,rating:4.8},
+];
+const LESSONS = [
+  {id:1,title:"Introduction & Overview",duration:"12 min",type:"video",done:true},
+  {id:2,title:"Core Concepts",duration:"20 min",type:"video",done:true},
+  {id:3,title:"Environment Setup",duration:"10 min",type:"reading",done:true},
+  {id:4,title:"Hands-on Practice 1",duration:"25 min",type:"video",done:false},
+  {id:5,title:"Hands-on Practice 2",duration:"22 min",type:"video",done:false},
+  {id:6,title:"Advanced Topics",duration:"28 min",type:"video",done:false},
+  {id:7,title:"Project Walkthrough",duration:"35 min",type:"video",done:false},
+  {id:8,title:"Final Quiz",duration:"15 min",type:"quiz",done:false},
+];
+const QUIZ = [
+  {q:"What is the core concept taught in this course?",opts:["Data structures","Problem-solving with the course tools","Operating systems","None of these"],ans:1},
+  {q:"Which tool/language is primarily used?",opts:["Java","PHP","Python / JavaScript (course specific)","Assembly"],ans:2},
+  {q:"What should you build after completing this course?",opts:["Nothing","A portfolio project","A startup","An exam paper"],ans:1},
+];
+const AI_REPLIES = [
+  "Based on your Python and ML progress (65% done!), I recommend targeting **Data Engineer** or **ML Engineer** roles. Key skills to add: Apache Spark, AWS S3, and Docker. All have free courses here!",
+  "Great question! For **Data Science**: complete your Pandas course → pick up Statistics basics → build 2 Kaggle projects. Your Python skills put you ahead of 70% of applicants!",
+  "For a **3-month plan**: Month 1 — finish ML course + start AWS. Month 2 — System Design basics. Month 3 — build 2 portfolio projects. This targets ₹8–15 LPA roles in Bangalore/Hyderabad.",
+  "Your resume should highlight: Python (intermediate), SQL, ML basics. Add a GitHub with 2-3 projects and quantify achievements ('improved model accuracy by 15%'). Want project ideas?",
+  "Top tech roles right now: ML Engineer (₹14–22 LPA), Data Engineer (₹12–18 LPA), Full Stack Dev (₹10–16 LPA), Cloud Architect (₹18–28 LPA). All achievable with courses on this platform!",
+  "Skill gap for Data Engineer: you need Spark, Airflow, and AWS on top of your Python+SQL. That's about 6–8 weeks of learning. Start with the AWS Cloud Practitioner course here!",
+];
+const ADMIN_USERS = [
+  {name:"Priya Sharma",email:"priya@example.com",role:"Student",courses:3,active:true},
+  {name:"Rahul Verma",email:"rahul@example.com",role:"Working Professional",courses:5,active:true},
+  {name:"Ananya Singh",email:"ananya@example.com",role:"Career Switcher",courses:2,active:false},
+  {name:"Vikram Nair",email:"vikram@example.com",role:"Fresher",courses:4,active:true},
+  {name:"Kavya Reddy",email:"kavya@example.com",role:"Student",courses:1,active:true},
+];
+let adminCourses = [...COURSES];
+let adminUsers = [...ADMIN_USERS];
+let currentUser = null, activeCourse = null, activeLesson = null;
+let quizAnswers = {}, quizDone = false, activeDashTab = 'home', activeAdminTab = 'overview';
+let catFilter = 'All';
+
+// ─── INIT TICKER ────────────────────────────────────────────────────────────
+const skills = ["Machine Learning","Web Development","Data Science","Cloud Computing","Cybersecurity","AI & Deep Learning","DevOps","System Design","React & Node","Python","SQL","Career Skills"];
+const tickerEl = document.getElementById('ticker');
+const tItems = [...skills,...skills].map(s=>`<span style="display:inline-block;margin:0 22px;font-size:12px;color:rgba(255,255,255,.28);letter-spacing:1px;text-transform:uppercase"><span style="color:rgba(99,102,241,.55);margin-right:8px">✦</span>${s}</span>`).join('');
+tickerEl.innerHTML = tItems;
+
+// ─── AUTH ────────────────────────────────────────────────────────────────────
+let authMode = 'login', authRole = 'user';
+function showAuth(role, mode='login') {
+  authRole = role; authMode = mode;
+  const overlay = document.getElementById('auth-overlay');
+  overlay.style.display = 'flex';
+  document.getElementById('auth-icon').textContent = role==='admin'?'🛡':'👤';
+  document.getElementById('auth-icon').style.background = role==='admin'?'linear-gradient(135deg,#f59e0b,#ef4444)':'linear-gradient(135deg,#6366f1,#10b981)';
+  document.getElementById('auth-title').textContent = role==='admin'?'Admin Portal':mode==='login'?'Welcome back':'Create account';
+  document.getElementById('auth-hint').textContent = role==='admin'?'Admin key: admin123 (demo)':'100% free. No credit card required.';
+  document.getElementById('auth-toggle-row').style.display = role==='admin'?'none':'flex';
+  document.getElementById('auth-adminkey').style.display = role==='admin'?'block':'none';
+  document.getElementById('auth-name').style.display = (role==='user'&&mode==='signup')?'block':'none';
+  document.getElementById('auth-role').style.display = (role==='user'&&mode==='signup')?'block':'none';
+  document.getElementById('auth-submit').textContent = role==='admin'?'Access Admin Panel →':mode==='login'?'Sign in →':'Create account →';
+  document.getElementById('auth-error').style.display = 'none';
+}
+function hideAuth() { document.getElementById('auth-overlay').style.display='none'; }
+function setAuthMode(m) {
+  authMode = m;
+  ['login','signup'].forEach(x=>{
+    document.getElementById('toggle-'+x).style.background = x===m?'rgba(99,102,241,.8)':'transparent';
+    document.getElementById('toggle-'+x).style.color = x===m?'#fff':'rgba(255,255,255,.4)';
+  });
+  document.getElementById('auth-name').style.display = m==='signup'?'block':'none';
+  document.getElementById('auth-role').style.display = m==='signup'?'block':'none';
+  document.getElementById('auth-title').textContent = m==='login'?'Welcome back':'Create account';
+  document.getElementById('auth-submit').textContent = m==='login'?'Sign in →':'Create account →';
+}
+async function handleAuth() {
+  const btn = document.getElementById('auth-submit');
+  const errEl = document.getElementById('auth-error');
+  errEl.style.display='none';
+  btn.textContent='Verifying...'; btn.disabled=true;
+  await new Promise(r=>setTimeout(r,1100));
+  btn.disabled=false;
+  if (authRole==='admin') {
+    if (document.getElementById('auth-adminkey').value !== 'admin123') {
+      errEl.textContent='Invalid admin key.'; errEl.style.display='block';
+      btn.textContent='Access Admin Panel →'; return;
+    }
+    currentUser={name:'Admin',email:document.getElementById('auth-email').value,isAdmin:true};
+    hideAuth(); showPage('admin'); buildAdmin();
+  } else {
+    const email = document.getElementById('auth-email').value;
+    if (!email) { errEl.textContent='Please enter your email.'; errEl.style.display='block'; btn.textContent=authMode==='login'?'Sign in →':'Create account →'; return; }
+    const name = authMode==='signup'?(document.getElementById('auth-name').value||email.split('@')[0]):email.split('@')[0];
+    const role = authMode==='signup'?document.getElementById('auth-role').value:'Student';
+    currentUser={name,email,role,isAdmin:false};
+    hideAuth(); showPage('dashboard'); buildDashboard();
+  }
+}
+
+// ─── PAGE ROUTING ────────────────────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.style.display='none';});
+  const el = document.getElementById('page-'+id);
+  el.style.display='flex'; el.classList.add('active');
+}
+function doLogout() { currentUser=null; showPage('landing'); }
+function goBack() { showPage('dashboard'); }
+
+// ─── DASHBOARD ───────────────────────────────────────────────────────────────
+function buildDashboard() {
+  if (!currentUser) return;
+  document.getElementById('greet-name').textContent = currentUser.name?.split(' ')[0]||'Learner';
+  document.getElementById('user-avatar').textContent = (currentUser.name||'U')[0].toUpperCase();
+  document.getElementById('profile-name').textContent = currentUser.name||'Learner';
+  document.getElementById('profile-role').textContent = currentUser.role||'Student';
+  document.getElementById('profile-role2').textContent = currentUser.role||'Student';
+  document.getElementById('profile-email').textContent = currentUser.email||'';
+  document.getElementById('profile-avatar').textContent = (currentUser.name||'U')[0].toUpperCase();
+  // Home courses
+  const enrolled = COURSES.filter(c=>c.enrolled);
+  document.getElementById('home-courses').innerHTML = enrolled.map(c=>courseCardHTML(c,true)).join('');
+  // All courses
+  document.getElementById('all-courses').innerHTML = COURSES.map(c=>courseCardHTML(c,false)).join('');
+  // Category filters
+  const cats=['All','ML & AI','Web Dev','Data Science','Cloud','Security','Engineering','DevOps','Career Skills'];
+  document.getElementById('cat-filters').innerHTML = cats.map(c=>`<button onclick="setCat('${c}')" class="cat-btn" id="cat-${c.replace(/[^a-z0-9]/gi,'-')}" style="padding:7px 16px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:${c===catFilter?'rgba(99,102,241,.3)':'transparent'};color:${c===catFilter?'#fff':'rgba(255,255,255,.4)'};font-size:12px;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;transition:all .2s">${c}</button>`).join('');
+  // Skill bars
+  const skills2=[["Python","#6366f1",85],["Machine Learning","#8b5cf6",60],["SQL","#10b981",75],["React","#f59e0b",40],["Data Analysis","#ec4899",50]];
+  document.getElementById('skill-bars').innerHTML = skills2.map(([s,c,v])=>`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px;color:rgba(255,255,255,.7)">${s}</span><span style="font-size:12px;color:rgba(255,255,255,.35)">${v}%</span></div><div class="prog-track"><div class="prog-fill" style="width:${v}%;background:linear-gradient(90deg,${c},${c}88)"></div></div></div>`).join('');
+}
+function courseCardHTML(c, compact) {
+  return `<div class="course-card" onclick="openCourse(${c.id})">
+    <div style="height:${compact?82:100}px;display:flex;align-items:center;justify-content:center;font-size:${compact?34:38}px;background:linear-gradient(135deg,${c.color}22,${c.color}11);border-bottom:1px solid rgba(255,255,255,.06)">${c.thumb}</div>
+    <div style="padding:15px 17px">
+      <span class="pill" style="background:${c.color}22;color:${c.color};margin-bottom:8px">${c.category}</span>
+      <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:#fff;margin:6px 0 5px;line-height:1.4">${c.title}</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.35);margin-bottom:${c.enrolled?'10px':'14px'}">${c.rating?'⭐ '+c.rating+' · ':''}${c.lessons} lessons · ${c.hours} hrs</div>
+      ${c.enrolled?`<div class="prog-track" style="margin-bottom:5px"><div class="prog-fill" style="width:${c.progress}%;background:linear-gradient(90deg,${c.color},${c.color}88)"></div></div><div style="font-size:11px;color:rgba(255,255,255,.3)">${c.progress}% complete</div>`
+      :`<button onclick="event.stopPropagation();openCourse(${c.id})" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:8px;padding:8px 0;color:#fff;font-size:12px;font-weight:600;cursor:pointer;width:100%;font-family:'DM Sans',sans-serif">Enroll Free →</button>`}
+    </div>
+  </div>`;
+}
+function switchTab(t) {
+  activeDashTab = t;
+  ['home','courses','advisor','certs','profile'].forEach(x=>{
+    document.getElementById('content-'+x).style.display=x===t?'block':'none';
+    document.getElementById('tab-'+x).classList.toggle('active',x===t);
+  });
+}
+function setCat(c) {
+  catFilter = c;
+  document.getElementById('all-courses').innerHTML = COURSES.filter(x=>c==='All'||x.category===c).map(x=>courseCardHTML(x,false)).join('');
+  document.querySelectorAll('.cat-btn').forEach(b=>{
+    const isActive = b.textContent===c;
+    b.style.background=isActive?'rgba(99,102,241,.3)':'transparent';
+    b.style.color=isActive?'#fff':'rgba(255,255,255,.4)';
+  });
+}
+function filterCourses() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  document.getElementById('all-courses').innerHTML = COURSES.filter(c=>(catFilter==='All'||c.category===catFilter)&&c.title.toLowerCase().includes(q)).map(c=>courseCardHTML(c,false)).join('');
+}
+
+// ─── AI CHAT ────────────────────────────────────────────────────────────────
+let chatTyping = false;
+async function sendChat() {
+  if (chatTyping) return;
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  const box = document.getElementById('chat-messages');
+  box.innerHTML += `<div style="display:flex;justify-content:flex-end"><div class="bubble-user">${msg}</div></div>`;
+  chatTyping = true;
+  box.innerHTML += `<div id="typing-indicator" style="display:flex"><div class="bubble-ai"><span style="animation:blink 1s infinite;display:inline-block">Thinking...</span></div></div>`;
+  box.scrollTop = box.scrollHeight;
+  await new Promise(r=>setTimeout(r,1400));
+  document.getElementById('typing-indicator')?.remove();
+  const reply = AI_REPLIES[Math.floor(Math.random()*AI_REPLIES.length)];
+  box.innerHTML += `<div style="display:flex"><div class="bubble-ai"><div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:5px;letter-spacing:.5px;text-transform:uppercase">SkillPath AI</div>${reply}</div></div>`;
+  box.scrollTop = box.scrollHeight;
+  chatTyping = false;
+}
+
+// ─── COURSE PLAYER ───────────────────────────────────────────────────────────
+function openCourse(id) {
+  activeCourse = COURSES.find(c=>c.id===id);
+  quizAnswers={}; quizDone=false;
+  document.getElementById('course-thumb').textContent = activeCourse.thumb;
+  document.getElementById('course-title-header').textContent = activeCourse.title;
+  document.getElementById('course-meta-header').textContent = `${LESSONS.length} lessons · ${activeCourse.hours} hrs`;
+  const done = LESSONS.filter(l=>l.done).length;
+  const pct = Math.round(done/LESSONS.length*100);
+  document.getElementById('course-progress-label').textContent = pct+'% done';
+  document.getElementById('course-progress-bar').style.width = pct+'%';
+  buildLessonList(LESSONS[0]);
+  showPage('course');
+}
+function buildLessonList(active) {
+  activeLesson = active;
+  document.getElementById('lesson-list').innerHTML = LESSONS.map((l,i)=>`
+    <div class="lesson-row ${active.id===l.id?'active':''}" onclick="selectLesson(${l.id})">
+      <div style="width:26px;height:26px;border-radius:50%;background:${l.done?'rgba(16,185,129,.2)':'rgba(255,255,255,.06)'};border:1px solid ${l.done?'rgba(16,185,129,.4)':'rgba(255,255,255,.1)'};display:flex;align-items:center;justify-content:center;font-size:11px;color:${l.done?'#10b981':'rgba(255,255,255,.4)'};flex-shrink:0">${l.done?'✓':i+1}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;color:${active.id===l.id?'#fff':'rgba(255,255,255,.7)'};font-weight:${active.id===l.id?500:400};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.title}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:2px">${l.type==='quiz'?'📝':l.type==='video'?'▶':'📖'} ${l.duration}</div>
+      </div>
+    </div>`).join('');
+  renderLessonContent(active);
+}
+function selectLesson(id) {
+  const l = LESSONS.find(x=>x.id===id);
+  buildLessonList(l);
+}
+function renderLessonContent(lesson) {
+  const main = document.getElementById('course-main-content');
+  if (lesson.type==='quiz') {
+    main.innerHTML = buildQuizHTML();
+    return;
+  }
+  main.innerHTML = `
+    <div style="max-width:720px">
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;overflow:hidden;margin-bottom:24px">
+        <div style="background:linear-gradient(135deg,${activeCourse.color}22,${activeCourse.color}11);height:300px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px">
+          <div style="font-size:64px">${activeCourse.thumb}</div>
+          <div style="background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);border-radius:50px;width:52px;height:52px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px">▶</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.3)">Video lesson · ${lesson.duration}</div>
+        </div>
+      </div>
+      <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:8px">${lesson.title}</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.4);line-height:1.8;margin-bottom:22px">This lesson covers all fundamental concepts you need to understand ${lesson.title.toLowerCase()}. Follow along with the video, take notes, and complete the practice exercises.</div>
+      <div style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:12px;padding:16px 20px;margin-bottom:22px">
+        <div style="font-size:13px;font-weight:600;color:#a5b4fc;margin-bottom:6px">💡 Key takeaways</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.7">After this lesson you'll understand core principles, common use cases, and real-world implementation patterns.</div>
+      </div>
+      <button onclick="nextLesson()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:10px;padding:11px 24px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Next lesson →</button>
+    </div>`;
+}
+function nextLesson() {
+  const idx = LESSONS.findIndex(l=>l.id===activeLesson.id);
+  if (idx < LESSONS.length-1) { const next = LESSONS[idx+1]; buildLessonList(next); }
+}
+function buildQuizHTML() {
+  return `<div style="max-width:600px">
+    <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:6px">Final Quiz 📝</div>
+    <div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:28px">Score 2/3 or above to earn your certificate</div>
+    ${QUIZ.map((q,qi)=>`
+      <div style="margin-bottom:28px">
+        <div style="font-size:15px;color:#fff;font-weight:500;margin-bottom:14px;line-height:1.5">Q${qi+1}. ${q.q}</div>
+        ${q.opts.map((o,oi)=>`<button class="opt-btn" id="opt-${qi}-${oi}" onclick="selectOpt(${qi},${oi})">${String.fromCharCode(65+oi)}. ${o}</button>`).join('')}
+      </div>`).join('')}
+    <button id="quiz-submit-btn" onclick="submitQuiz()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:12px;padding:13px 28px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;opacity:.5" disabled>Submit Quiz →</button>
+    <div id="quiz-result" style="display:none;margin-top:20px"></div>
+  </div>`;
+}
+function selectOpt(qi, oi) {
+  if (quizDone) return;
+  quizAnswers[qi] = oi;
+  document.querySelectorAll(`[id^="opt-${qi}-"]`).forEach(b=>b.classList.remove('selected'));
+  document.getElementById(`opt-${qi}-${oi}`).classList.add('selected');
+  const btn = document.getElementById('quiz-submit-btn');
+  if (Object.keys(quizAnswers).length === QUIZ.length) { btn.disabled=false; btn.style.opacity='1'; }
+}
+function submitQuiz() {
+  quizDone = true;
+  const score = Object.entries(quizAnswers).filter(([i,a])=>QUIZ[+i].ans===+a).length;
+  const passed = score >= 2;
+  QUIZ.forEach((q,qi)=>{
+    q.opts.forEach((_,oi)=>{
+      const btn = document.getElementById(`opt-${qi}-${oi}`);
+      if (!btn) return;
+      btn.disabled=true;
+      if (oi===q.ans) btn.classList.add('correct');
+      else if (quizAnswers[qi]===oi) btn.classList.add('wrong');
+    });
+  });
+  document.getElementById('quiz-submit-btn').style.display='none';
+  const res = document.getElementById('quiz-result');
+  res.style.display='block';
+  if (passed) {
+    const certId = 'SKP-2025-'+Math.floor(Math.random()*900000+100000);
+    res.innerHTML = `<div class="cert-preview">
+      <div style="font-size:52px;margin-bottom:14px">🏅</div>
+      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:8px">Congratulations!</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.5);margin-bottom:26px">You passed with ${score}/${QUIZ.length} — certificate ready!</div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:24px;margin-bottom:22px">
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px">Certificate of Completion</div>
+        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:5px">${activeCourse.title}</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.4)">Issued by SkillPath AI · April 2025</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.3);margin-top:8px">ID: ${certId}</div>
+      </div>
+      <button onclick="downloadCert('${certId}','${activeCourse.title.replace(/'/g,"\\'")}','${(currentUser?.name||'Learner').replace(/'/g,"\\'")}')" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:12px;padding:14px 32px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:block;width:100%;margin-bottom:10px">⬇ Download Certificate PDF</button>
+      <button onclick="goBack()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 32px;color:rgba(255,255,255,.6);font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%">Back to courses</button>
+    </div>`;
+  } else {
+    res.innerHTML = `<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:14px;padding:20px 24px;text-align:center">
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#fca5a5;margin-bottom:6px">❌ Score: ${score}/${QUIZ.length}</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.5);margin-bottom:14px">Review the lessons and try again</div>
+      <button onclick="quizAnswers={};quizDone=false;renderLessonContent(activeLesson)" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:9px 22px;color:#fff;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">Retry quiz</button>
+    </div>`;
+  }
+}
+
+// ─── PDF CERT GENERATOR ───────────────────────────────────────────────────────
+function downloadCert(certId, courseTitle, studentName) {
+  studentName = studentName || currentUser?.name || 'Learner';
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+  const W=297, H=210;
+  // Background
+  doc.setFillColor(5,10,20); doc.rect(0,0,W,H,'F');
+  // Outer border
+  doc.setDrawColor(99,102,241); doc.setLineWidth(1); doc.rect(8,8,W-16,H-16);
+  doc.setDrawColor(99,102,241); doc.setLineWidth(0.3); doc.rect(11,11,W-22,H-22);
+  // Corner accents
+  doc.setDrawColor(6,182,212); doc.setLineWidth(1.2);
+  [[8,8,1,1],[W-8,8,-1,1],[8,H-8,1,-1],[W-8,H-8,-1,-1]].forEach(([x,y,sx,sy])=>{
+    doc.line(x,y,x+sx*12,y); doc.line(x,y,x,y+sy*12);
+  });
+  // Logo badge
+  doc.setFillColor(99,102,241); doc.roundedRect(W/2-22,20,44,10,3,3,'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(10); doc.setFont('helvetica','bold');
+  doc.text('SkillPath AI', W/2, 26.5, {align:'center'});
+  // Certificate title
+  doc.setTextColor(170,172,240); doc.setFontSize(9.5); doc.setFont('helvetica','normal');
+  doc.text('C E R T I F I C A T E   O F   C O M P L E T I O N', W/2, 42, {align:'center'});
+  doc.setDrawColor(99,102,241); doc.setLineWidth(0.4);
+  doc.line(W/2-55,45,W/2+55,45);
+  // Certifies that
+  doc.setTextColor(150,150,170); doc.setFontSize(10); doc.setFont('helvetica','normal');
+  doc.text('This is to certify that', W/2, 60, {align:'center'});
+  // Name
+  const nfs = studentName.length>25?22:studentName.length>18?26:30;
+  doc.setTextColor(255,255,255); doc.setFontSize(nfs); doc.setFont('helvetica','bold');
+  doc.text(studentName, W/2, 78, {align:'center'});
+  const nw = doc.getTextWidth(studentName);
+  doc.setDrawColor(6,182,212); doc.setLineWidth(1);
+  doc.line(W/2-nw/2,81,W/2+nw/2,81);
+  // Has completed
+  doc.setTextColor(150,150,170); doc.setFontSize(10); doc.setFont('helvetica','normal');
+  doc.text('has successfully completed the course', W/2, 93, {align:'center'});
+  // Course title
+  const cfs = courseTitle.length>35?13:courseTitle.length>25?16:20;
+  doc.setTextColor(165,200,255); doc.setFontSize(cfs); doc.setFont('helvetica','bold');
+  doc.text(courseTitle, W/2, 108, {align:'center'});
+  // Divider
+  doc.setDrawColor(40,45,80); doc.setLineWidth(0.4);
+  doc.line(30,122,W-30,122);
+  // Footer columns
+  const fy=138, now=new Date().toLocaleDateString('en-IN',{year:'numeric',month:'long',day:'numeric'});
+  [[W*.22,'ISSUED ON',now],[W*.5,'CERTIFICATE ID',certId],[W*.78,'AUTHORIZED BY','SkillPath AI Team']].forEach(([x,lbl,val])=>{
+    doc.setTextColor(110,110,140); doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.text(lbl, x, fy-7, {align:'center'});
+    doc.setTextColor(210,215,255); doc.setFontSize(9.5); doc.setFont('helvetica','bold');
+    doc.text(String(val), x, fy, {align:'center'});
+  });
+  doc.setDrawColor(40,45,80); doc.setLineWidth(0.4);
+  [W*.36,W*.64].forEach(sx=>doc.line(sx,fy-10,sx,fy+4));
+  // Verify URL
+  doc.setTextColor(80,85,110); doc.setFontSize(7); doc.setFont('helvetica','normal');
+  doc.text(`Verify at: skillpath.ai/verify/${certId}`, W/2, H-14, {align:'center'});
+  // Corner dots
+  doc.setFillColor(99,102,241);
+  [[18,18],[W-18,18],[18,H-18],[W-18,H-18]].forEach(([cx,cy])=>doc.circle(cx,cy,2.5,'F'));
+  doc.save(`SkillPath-Certificate-${courseTitle.replace(/\s+/g,'-')}-${certId}.pdf`);
+}
+
+// ─── ADMIN ────────────────────────────────────────────────────────────────────
+function buildAdmin() {
+  switchAdminTab('overview');
+}
+function switchAdminTab(t) {
+  activeAdminTab = t;
+  ['overview','users','courses','analytics'].forEach(x=>{
+    document.getElementById('admin-content-'+x).style.display=x===t?'block':'none';
+    const btn=document.getElementById('atab-'+x);
+    btn.classList.toggle('active',x===t);
+    btn.classList.toggle('admin-active',x===t);
+  });
+  if (t==='overview') renderAdminOverview();
+  else if (t==='users') renderAdminUsers();
+  else if (t==='courses') renderAdminCourses();
+  else if (t==='analytics') renderAdminAnalytics();
+}
+function renderAdminOverview() {
+  const el = document.getElementById('admin-content-overview');
+  el.innerHTML = `
+    <div style="margin-bottom:26px"><h1 style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;margin:0 0 4px">Admin Dashboard</h1><p style="color:rgba(255,255,255,.4);font-size:14px;margin:0">Platform overview & management</p></div>
+    <div class="grid-4" style="margin-bottom:28px">
+      ${[["3,629","Total learners","+12%","#6366f1"],["50","Free courses","+3 this month","#10b981"],["8,412","Certificates issued","+340 this week","#f59e0b"],["94%","Completion rate","↑ 2%","#ec4899"]].map(([v,l,d,c])=>`
+        <div class="stat"><div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800">${v}</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">${l}</div><div style="font-size:11px;color:${c};margin-top:8px">${d}</div></div>`).join('')}
+    </div>
+    <div class="grid-2">
+      <div class="card" style="overflow:hidden">
+        <div style="padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;align-items:center">
+          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700">Recent sign-ups</div>
+          <button onclick="switchAdminTab('users')" style="font-size:12px;color:rgba(99,102,241,.8);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif">View all →</button>
+        </div>
+        ${adminUsers.slice(0,4).map(u=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.05)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0">${u.name[0]}</div>
+            <div><div style="font-size:13px;font-weight:500">${u.name}</div><div style="font-size:11px;color:rgba(255,255,255,.35)">${u.role}</div></div>
+          </div>
+          <span class="pill" style="background:${u.active?'rgba(16,185,129,.15)':'rgba(255,255,255,.06)'};color:${u.active?'#6ee7b7':'rgba(255,255,255,.35)'}">${u.active?'Active':'Inactive'}</span>
+        </div>`).join('')}
+      </div>
+      <div class="card" style="overflow:hidden">
+        <div style="padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;align-items:center">
+          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700">Top courses</div>
+          <button onclick="switchAdminTab('courses')" style="font-size:12px;color:rgba(99,102,241,.8);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif">Manage →</button>
+        </div>
+        ${adminCourses.slice(0,4).map(c=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.05)">
+          <div><div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px">${c.title}</div><div style="font-size:11px;color:rgba(255,255,255,.35)">${c.enrolled||Math.floor(Math.random()*800+200)} enrolled</div></div>
+          <span class="pill" style="background:rgba(16,185,129,.15);color:#6ee7b7">Live</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+}
+function renderAdminUsers() {
+  const el = document.getElementById('admin-content-users');
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px">
+      <h1 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin:0">Users <span style="color:rgba(255,255,255,.3);font-size:16px">(${adminUsers.length})</span></h1>
+    </div>
+    <div class="card" style="overflow:hidden">
+      <table class="data-table" style="width:100%">
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Courses</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>${adminUsers.map((u,i)=>`<tr>
+          <td><div style="display:flex;align-items:center;gap:10px"><div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${u.name[0]}</div>${u.name}</div></td>
+          <td style="color:rgba(255,255,255,.5)">${u.email}</td>
+          <td style="color:rgba(255,255,255,.5)">${u.role}</td>
+          <td>${u.courses}</td>
+          <td><span class="pill" style="background:${u.active?'rgba(16,185,129,.15)':'rgba(255,255,255,.06)'};color:${u.active?'#6ee7b7':'rgba(255,255,255,.3)'}">${u.active?'Active':'Inactive'}</span></td>
+          <td><button onclick="removeUser(${i})" style="padding:5px 13px;border-radius:7px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#f87171;transition:all .2s">Remove</button></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+}
+function removeUser(i) { adminUsers.splice(i,1); renderAdminUsers(); }
+function renderAdminCourses() {
+  const el = document.getElementById('admin-content-courses');
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px">
+      <h1 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin:0">Courses <span style="color:rgba(255,255,255,.3);font-size:16px">(${adminCourses.length})</span></h1>
+      <button onclick="showAddCourseForm()" style="background:linear-gradient(135deg,#f59e0b,#ef4444);border:none;border-radius:10px;padding:10px 20px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">+ Add Course</button>
+    </div>
+    <div id="add-course-form" style="display:none;background:rgba(255,255,255,.04);border:1px solid rgba(245,158,11,.3);border-radius:18px;padding:24px;margin-bottom:20px">
+      <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:16px">New Course</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <input id="new-title" class="input-f" placeholder="Course title" style="grid-column:1/3"/>
+        <select id="new-cat" class="input-f" style="background:#0d1220"><option>ML & AI</option><option>Web Dev</option><option>Data Science</option><option>Cloud</option><option>Security</option><option>DevOps</option></select>
+        <input id="new-lessons" class="input-f" type="number" placeholder="No. of lessons" value="10"/>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="addCourse()" style="background:linear-gradient(135deg,#f59e0b,#ef4444);border:none;border-radius:8px;padding:9px 20px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Save course</button>
+        <button onclick="document.getElementById('add-course-form').style.display='none'" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:9px 18px;color:rgba(255,255,255,.6);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">Cancel</button>
+      </div>
+    </div>
+    <div class="card" style="overflow:hidden">
+      <table class="data-table" style="width:100%">
+        <thead><tr><th>Title</th><th>Category</th><th>Lessons</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>${adminCourses.map((c,i)=>`<tr>
+          <td style="font-weight:500;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.title}</td>
+          <td style="color:rgba(255,255,255,.5)">${c.category}</td>
+          <td>${c.lessons}</td>
+          <td><span class="pill" style="background:rgba(16,185,129,.15);color:#6ee7b7">Live</span></td>
+          <td><div style="display:flex;gap:6px">
+            <button onclick="adminCourses.splice(${i},1);renderAdminCourses()" style="padding:5px 12px;border-radius:7px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#f87171">Delete</button>
+          </div></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+}
+function showAddCourseForm() { document.getElementById('add-course-form').style.display='block'; }
+function addCourse() {
+  const title=document.getElementById('new-title').value;
+  const cat=document.getElementById('new-cat').value;
+  const lessons=+document.getElementById('new-lessons').value;
+  if (!title) return;
+  adminCourses.unshift({id:adminCourses.length+10,title,category:cat,lessons,hours:Math.round(lessons*.45),thumb:'📚',color:'#6366f1',enrolled:false,progress:0});
+  renderAdminCourses();
+}
+function renderAdminAnalytics() {
+  const el = document.getElementById('admin-content-analytics');
+  el.innerHTML = `
+    <h1 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin:0 0 22px">Analytics</h1>
+    <div class="grid-3" style="margin-bottom:22px">
+      ${[["Daily active users","284",[40,55,48,70,62,80,75]],["Certificates today","47",[10,14,12,18,15,22,20]],["Avg. session (min)","38",[32,35,30,40,38,42,38]]].map(([l,v,spark])=>`
+        <div class="card" style="padding:20px 22px">
+          <div style="font-size:12px;color:rgba(255,255,255,.35);margin-bottom:8px">${l}</div>
+          <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;margin-bottom:14px">${v}</div>
+          <svg viewBox="0 0 100 30" width="100%" height="30" preserveAspectRatio="none">
+            <polyline points="${spark.map((v2,i)=>`${i*100/6},${30-v2*.35}`).join(' ')}" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>`).join('')}
+    </div>
+    <div class="grid-2">
+      <div class="card" style="padding:22px">
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:18px">Enrollments by category</div>
+        ${[["ML & AI",65,"#6366f1"],["Web Dev",55,"#10b981"],["Data Science",45,"#f59e0b"],["Cloud",30,"#0ea5e9"],["Security",20,"#8b5cf6"]].map(([cat,pct,col])=>`
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px;color:rgba(255,255,255,.7)">${cat}</span><span style="font-size:12px;color:rgba(255,255,255,.35)">${pct}%</span></div>
+            <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:linear-gradient(90deg,${col},${col}88)"></div></div>
+          </div>`).join('')}
+      </div>
+      <div class="card" style="padding:22px">
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:18px">User breakdown</div>
+        ${[["Students","58%","#6366f1"],["Working Professionals","25%","#10b981"],["Career Switchers","12%","#f59e0b"],["Freshers","5%","#ec4899"]].map(([r,pct,col])=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:10px;height:10px;border-radius:2px;background:${col}"></div><span style="font-size:13px;color:rgba(255,255,255,.7)">${r}</span></div>
+            <span style="font-size:13px;font-weight:600">${pct}</span>
+          </div>`).join('')}
+        <div style="margin-top:16px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:12px 14px">
+          <div style="font-size:12px;color:#fbbf24;font-weight:500">📈 Growth insight</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:4px">Working professional segment grew 34% this month</div>
+        </div>
+      </div>
+    </div>`;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+pydantic[email]
+bcrypt
+PyJWT
+scikit-learn
+numpy
+pandas
+reportlab
+python-multipart
+httpx
+python-jose[cryptography]

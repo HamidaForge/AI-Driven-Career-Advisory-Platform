@@ -1,0 +1,1988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SkillPath AI — Career Advisory Platform</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<!-- jsPDF for real certificate PDF download -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- PDF.js for reading uploaded PDF resumes -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#E5D7C4;font-family:'DM Sans',sans-serif}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-thumb{background:#889063;border-radius:3px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+const { useState, useRef, useEffect } = React;
+const C = {k:"#354024",m:"#889063",t:"#CFBB99",b:"#E5D7C4",d:"#4C3D19"};
+
+// ══ CLAUDE API via OpenRouter ══
+window._SPAI_KEY = "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";
+async function askClaude(prompt, maxTokens=1000) {
+  const key = window._SPAI_KEY || "";
+  if(!key) throw new Error("NO_KEY");
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":"Bearer " + key,
+      "HTTP-Referer":"https://skillpathai.com",
+      "X-Title":"SkillPath AI"
+    },
+    body: JSON.stringify({
+      model:"anthropic/claude-sonnet-4",
+      max_tokens: maxTokens,
+      messages:[{role:"user", content: prompt}]
+    })
+  });
+  const data = await res.json();
+  if(data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+  return data.choices[0].message.content;
+}
+function parseJSON(text){ return JSON.parse(text.replace(/```json|```/g,"").trim()); }
+
+// ══ CERTIFICATE PDF GENERATOR — Simple & Clean ══
+function downloadCertificatePDF(courseName, _unused) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const W = 297, H = 210;
+
+  // ── White background ──
+  doc.setFillColor(255, 255, 255);
+  doc.rect(0, 0, W, H, "F");
+
+  // ── Top dark bar ──
+  doc.setFillColor(53, 64, 36);
+  doc.rect(0, 0, W, 18, "F");
+
+  // ── SkillPath AI brand text in top bar (left) ──
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(11);
+  doc.setTextColor(229, 215, 196);
+  doc.text("SkillPath", 14, 12);
+  doc.setTextColor(136, 144, 99);
+  doc.text("AI", 14 + doc.getTextWidth("SkillPath") + 1, 12);
+
+  // ── 🌿 Leaf symbol top-right corner ──
+  doc.setFontSize(16);
+  doc.setTextColor(136, 144, 99);
+  doc.text("🌿", W - 18, 13);
+
+  // ── Thin olive accent line below top bar ──
+  doc.setDrawColor(136, 144, 99);
+  doc.setLineWidth(0.8);
+  doc.line(0, 18, W, 18);
+
+  // ── CERTIFICATE OF COMPLETION label ──
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(9);
+  doc.setTextColor(136, 144, 99);
+  doc.setCharSpace(3);
+  doc.text("CERTIFICATE OF COMPLETION", W/2, 36, {align:"center"});
+  doc.setCharSpace(0);
+
+  // ── Thin divider ──
+  doc.setDrawColor(207, 187, 153);
+  doc.setLineWidth(0.4);
+  doc.line(W/2 - 55, 40, W/2 + 55, 40);
+
+  // ── "This certifies that" ──
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(10);
+  doc.setTextColor(76, 61, 25);
+  doc.text("This certifies that", W/2, 53, {align:"center"});
+
+  // ── JUHI (recipient name, bold large) ──
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(36);
+  doc.setTextColor(53, 64, 36);
+  doc.text("Juhi", W/2, 76, {align:"center"});
+
+  // ── name underline ──
+  const nw = doc.getTextWidth("Juhi");
+  doc.setDrawColor(136, 144, 99);
+  doc.setLineWidth(1);
+  doc.line(W/2 - nw/2, 79, W/2 + nw/2, 79);
+
+  // ── "has successfully completed" ──
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(10);
+  doc.setTextColor(76, 61, 25);
+  doc.text("has successfully completed", W/2, 92, {align:"center"});
+
+  // ── Course name (bold, olive) ──
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(14);
+  doc.setTextColor(53, 64, 36);
+  const cName = courseName.length > 42 ? courseName.substring(0,42)+"..." : courseName;
+  doc.text(cName, W/2, 106, {align:"center"});
+
+  // ── thin divider below course ──
+  doc.setDrawColor(207, 187, 153);
+  doc.setLineWidth(0.4);
+  doc.line(W/2 - 55, 112, W/2 + 55, 112);
+
+  // ── Date and Certificate ID ──
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("en-IN",{year:"numeric",month:"long",day:"numeric"});
+  const certId = "SKP-"+now.getFullYear()+"-"+Math.floor(Math.random()*900000+100000);
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(136, 144, 99);
+  doc.text("Date: " + dateStr, W/2 - 4, 122, {align:"right"});
+  doc.text("  |  ID: " + certId, W/2 - 4, 122, {align:"left"});
+
+  // ════ SIGNATURES SECTION ════
+  // Left signature — Platform Director with handwritten-style text
+  // Signature flourish (drawn as curves to simulate handwriting)
+  doc.setDrawColor(53, 64, 36);
+  doc.setLineWidth(0.6);
+  // Simulate a flowing signature for "Anika Sharma"
+  doc.lines([
+    [8,  -3],
+    [6,  -5],
+    [4,   0],
+    [6,   4],
+    [8,   1],
+    [5,  -2],
+    [10,  0],
+    [8,   3],
+    [5,  -1],
+    [4,  -4],
+    [8,   0],
+    [5,   3],
+  ], 55, 148, [1,1], "S", false);
+
+  // Signature underline left
+  doc.setLineWidth(0.4);
+  doc.setDrawColor(136, 144, 99);
+  doc.line(48, 158, 108, 158);
+
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(9);
+  doc.setTextColor(53, 64, 36);
+  doc.text("Anika Sharma", 78, 165, {align:"center"});
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(8);
+  doc.setTextColor(136, 144, 99);
+  doc.text("Platform Director, SkillPath AI", 78, 171, {align:"center"});
+
+  // Right signature — AI Curriculum Board
+  doc.setDrawColor(53, 64, 36);
+  doc.setLineWidth(0.6);
+  doc.lines([
+    [6,  -4],
+    [8,  -2],
+    [5,   3],
+    [6,   4],
+    [9,   0],
+    [5,  -3],
+    [7,  -4],
+    [9,   2],
+    [6,   3],
+    [5,  -2],
+    [8,   0],
+    [4,   3],
+  ], 190, 148, [1,1], "S", false);
+
+  doc.setLineWidth(0.4);
+  doc.setDrawColor(136, 144, 99);
+  doc.line(183, 158, 243, 158);
+
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(9);
+  doc.setTextColor(53, 64, 36);
+  doc.text("Dr. Rohan Mehta", 213, 165, {align:"center"});
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(8);
+  doc.setTextColor(136, 144, 99);
+  doc.text("AI Curriculum Board, SkillPath AI", 213, 171, {align:"center"});
+
+  // ── Seal / stamp circle in center between signatures ──
+  doc.setDrawColor(53, 64, 36);
+  doc.setLineWidth(1);
+  doc.circle(W/2, 158, 14);
+  doc.setDrawColor(136, 144, 99);
+  doc.setLineWidth(0.5);
+  doc.circle(W/2, 158, 12);
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(7);
+  doc.setTextColor(53, 64, 36);
+  doc.text("SKILLPATH", W/2, 156, {align:"center"});
+  doc.text("AI", W/2, 162, {align:"center"});
+
+  // ── Bottom olive bar ──
+  doc.setFillColor(53, 64, 36);
+  doc.rect(0, H-12, W, 12, "F");
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(7);
+  doc.setTextColor(136, 144, 99);
+  doc.text("SkillPath AI  ·  skillpathai.com  ·  " + certId, W/2, H-5, {align:"center"});
+
+  doc.save("SkillPath_Certificate_Juhi.pdf");
+}
+
+// ══ EXTRACT TEXT FROM UPLOADED FILE ══
+async function extractTextFromFile(file) {
+  // ── TXT ──
+  if (file.type === "text/plain" || file.name.endsWith(".txt")) {
+    return await file.text();
+  }
+  // ── DOCX ──
+  if (file.name.endsWith(".docx") || file.type.includes("wordprocessingml")) {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      // Decode raw bytes; DOCX is a ZIP — extract XML text content
+      const uint8 = new Uint8Array(arrayBuffer);
+      // Convert to latin1 string to search ZIP contents
+      let raw = "";
+      for(let i=0;i<uint8.length;i++) raw += String.fromCharCode(uint8[i]);
+      // Extract all <w:t> text nodes from word/document.xml
+      const matches = raw.match(/<w:t(?:\s[^>]*)?>([^<]*)<\/w:t>/g) || [];
+      const text = matches.map(m => m.replace(/<[^>]+>/g,"")).join(" ").trim();
+      if(text.length > 30) return text;
+    } catch(e){ console.warn("DOCX parse error",e); }
+    return "";
+  }
+  // ── PDF — use PDF.js with disableWorker so no separate worker file needed ──
+  if (file.name.endsWith(".pdf") || file.type === "application/pdf") {
+    try {
+      // Disable worker to avoid CDN worker loading issues in local/offline context
+      if(window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+      }
+      const arrayBuffer = await file.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({
+        data: arrayBuffer,
+        disableWorker: true,
+        disableFontFace: true,
+        useSystemFonts: true
+      });
+      const pdf = await loadingTask.promise;
+      let text = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items.map(item => item.str || "").join(" ");
+        text += pageText + "\n";
+      }
+      if(text.trim().length > 30) return text;
+    } catch(e){ console.warn("PDF.js error:", e); }
+    // ── Fallback: read raw bytes and pull ASCII text runs ──
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8 = new Uint8Array(arrayBuffer);
+      let raw = "";
+      for(let i=0;i<uint8.length;i++){
+        const ch = uint8[i];
+        if(ch>=32&&ch<=126) raw += String.fromCharCode(ch);
+        else if(ch===10||ch===13) raw += " ";
+      }
+      // Pull readable runs of 4+ printable chars
+      const runs = raw.match(/[A-Za-z0-9@.,:;()\-\/&\s]{4,}/g) || [];
+      const text = runs.join(" ").replace(/\s+/g," ").trim();
+      if(text.length > 100) return text;
+    } catch(e2){ console.warn("Fallback read error:", e2); }
+    return "";
+  }
+  return "";
+}
+
+// ══ COURSES DATA — 30+ courses across domains ══
+const COURSES = [
+  // ML & AI
+  {id:1, title:"Machine Learning with Python", category:"ML & AI", lessons:14, hours:6, thumb:"🤖", enrolled:true, progress:65, rating:4.9,
+    videoIds:["aircAruvnKk","PeMlggyqz0Y","ukzFI9rgwfU","nKW8Ndu7Mjw","E0Ld7ZgsuoA","YrtFtGlXbSQ","aircAruvnKk","PeMlggyqz0Y","ukzFI9rgwfU","nKW8Ndu7Mjw","E0Ld7ZgsuoA","YrtFtGlXbSQ","aircAruvnKk","PeMlggyqz0Y"],
+    lessons_data:[
+      {id:1,title:"Introduction to ML",duration:"12 min",type:"video",done:true},
+      {id:2,title:"Types of Learning",duration:"18 min",type:"video",done:true},
+      {id:3,title:"Python Setup & Libraries",duration:"10 min",type:"video",done:false},
+      {id:4,title:"NumPy & Pandas",duration:"25 min",type:"video",done:false},
+      {id:5,title:"Linear Regression",duration:"22 min",type:"video",done:false},
+      {id:6,title:"Logistic Regression",duration:"20 min",type:"video",done:false},
+      {id:7,title:"Decision Trees",duration:"18 min",type:"video",done:false},
+      {id:8,title:"Random Forests",duration:"22 min",type:"video",done:false},
+      {id:9,title:"SVM & KNN",duration:"20 min",type:"video",done:false},
+      {id:10,title:"K-Means Clustering",duration:"15 min",type:"video",done:false},
+      {id:11,title:"Model Evaluation",duration:"18 min",type:"video",done:false},
+      {id:12,title:"Hyperparameter Tuning",duration:"20 min",type:"video",done:false},
+      {id:13,title:"Deploying ML Models",duration:"25 min",type:"video",done:false},
+      {id:14,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"What does ML stand for?",opts:["Machine Language","Machine Learning","Multi-Layer","Memory Logic"],ans:1},{q:"Which is for classification?",opts:["Linear Regression","K-Means","Logistic Regression","PCA"],ans:2},{q:"What is overfitting?",opts:["Too simple model","Memorizes training data","High bias","None of these"],ans:1}]
+  },
+  // Web Dev
+  {id:2, title:"Full Stack React & Node.js", category:"Web Dev", lessons:22, hours:9, thumb:"⚛️", enrolled:true, progress:30, rating:4.8,
+    videoIds:["w7ejDZ8SWv8","4UZrsTqkcW4","f55qeKGgB_M","ENrzD9HAZK4","pKd0Rpw7O4o","w7ejDZ8SWv8","4UZrsTqkcW4","f55qeKGgB_M","ENrzD9HAZK4","pKd0Rpw7O4o","w7ejDZ8SWv8","4UZrsTqkcW4","f55qeKGgB_M","ENrzD9HAZK4","pKd0Rpw7O4o","w7ejDZ8SWv8","4UZrsTqkcW4","f55qeKGgB_M","ENrzD9HAZK4","pKd0Rpw7O4o","w7ejDZ8SWv8","4UZrsTqkcW4"],
+    lessons_data:[
+      {id:1,title:"React Fundamentals",duration:"20 min",type:"video",done:true},
+      {id:2,title:"JSX & Components",duration:"18 min",type:"video",done:true},
+      {id:3,title:"React Hooks (useState)",duration:"22 min",type:"video",done:false},
+      {id:4,title:"useEffect & Lifecycle",duration:"18 min",type:"video",done:false},
+      {id:5,title:"React Router",duration:"15 min",type:"video",done:false},
+      {id:6,title:"Context API",duration:"20 min",type:"video",done:false},
+      {id:7,title:"Node.js Basics",duration:"22 min",type:"video",done:false},
+      {id:8,title:"Express.js",duration:"18 min",type:"video",done:false},
+      {id:9,title:"REST APIs",duration:"25 min",type:"video",done:false},
+      {id:10,title:"MongoDB & Mongoose",duration:"22 min",type:"video",done:false},
+      {id:11,title:"JWT Authentication",duration:"20 min",type:"video",done:false},
+      {id:12,title:"File Uploads",duration:"18 min",type:"video",done:false},
+      {id:13,title:"Deployment on Vercel",duration:"15 min",type:"video",done:false},
+      {id:14,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"What is JSX?",opts:["Java Syntax Extension","JavaScript XML","JSON Express","None"],ans:1},{q:"Which hook manages state?",opts:["useEffect","useState","useRef","useContext"],ans:1},{q:"What does REST stand for?",opts:["Rapid State Transfer","Representational State Transfer","Remote Server Technology","None"],ans:1}]
+  },
+  // Data Science
+  {id:3, title:"Data Analysis with Pandas", category:"Data Science", lessons:16, hours:7, thumb:"📊", enrolled:true, progress:10, rating:4.7,
+    videoIds:["vmEHCJofslg","ZyhVh-qejZQ","vmEHCJofslg","ZyhVh-qejZQ","vmEHCJofslg","ZyhVh-qejZQ","vmEHCJofslg","ZyhVh-qejZQ","vmEHCJofslg","ZyhVh-qejZQ","vmEHCJofslg","ZyhVh-qejZQ","vmEHCJofslg","ZyhVh-qejZQ","vmEHCJofslg","ZyhVh-qejZQ"],
+    lessons_data:[
+      {id:1,title:"Python for Data Science",duration:"15 min",type:"video",done:true},
+      {id:2,title:"Pandas Basics",duration:"20 min",type:"video",done:false},
+      {id:3,title:"Data Cleaning",duration:"22 min",type:"video",done:false},
+      {id:4,title:"Data Manipulation",duration:"25 min",type:"video",done:false},
+      {id:5,title:"Matplotlib Visualizations",duration:"18 min",type:"video",done:false},
+      {id:6,title:"Seaborn Charts",duration:"15 min",type:"video",done:false},
+      {id:7,title:"Statistics Basics",duration:"20 min",type:"video",done:false},
+      {id:8,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"Which library is Pandas built on?",opts:["NumPy","SciPy","Matplotlib","TensorFlow"],ans:0},{q:"What does df.dropna() do?",opts:["Drops columns","Drops rows with NaN","Sorts data","Resets index"],ans:1},{q:"What is EDA?",opts:["Exploratory Data Analysis","Extended Data Access","Extra Data Aggregation","None"],ans:0}]
+  },
+  // Engineering
+  {id:4, title:"System Design Fundamentals", category:"Engineering", lessons:10, hours:5, thumb:"🏗️", enrolled:false, progress:0, rating:4.9,
+    videoIds:["xpDnVSmNFX0","Y-Gl4HEyeUQ","xpDnVSmNFX0","Y-Gl4HEyeUQ","xpDnVSmNFX0","Y-Gl4HEyeUQ","xpDnVSmNFX0","Y-Gl4HEyeUQ","xpDnVSmNFX0","Y-Gl4HEyeUQ"],
+    lessons_data:[
+      {id:1,title:"System Design Intro",duration:"15 min",type:"video",done:false},
+      {id:2,title:"Scalability Concepts",duration:"20 min",type:"video",done:false},
+      {id:3,title:"Load Balancing",duration:"18 min",type:"video",done:false},
+      {id:4,title:"Caching Strategies",duration:"22 min",type:"video",done:false},
+      {id:5,title:"Database Design",duration:"25 min",type:"video",done:false},
+      {id:6,title:"Microservices",duration:"20 min",type:"video",done:false},
+      {id:7,title:"Message Queues",duration:"18 min",type:"video",done:false},
+      {id:8,title:"CDN & Networking",duration:"15 min",type:"video",done:false},
+      {id:9,title:"Designing Twitter/YouTube",duration:"28 min",type:"video",done:false},
+      {id:10,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"What does horizontal scaling mean?",opts:["Bigger machine","More machines","Faster CPU","More RAM"],ans:1},{q:"What is a CDN?",opts:["Central Data Node","Content Delivery Network","Cloud Database Node","None"],ans:1},{q:"What is sharding?",opts:["Encrypting data","Splitting DB horizontally","Caching layer","None"],ans:1}]
+  },
+  // Cloud
+  {id:5, title:"AWS Cloud Practitioner", category:"Cloud", lessons:18, hours:8, thumb:"☁️", enrolled:false, progress:0, rating:4.6,
+    videoIds:["3XFODda6YXo","a9__D53WsaY","3XFODda6YXo","a9__D53WsaY","3XFODda6YXo","a9__D53WsaY","3XFODda6YXo","a9__D53WsaY","3XFODda6YXo","a9__D53WsaY","3XFODda6YXo","a9__D53WsaY","3XFODda6YXo","a9__D53WsaY","3XFODda6YXo","a9__D53WsaY","3XFODda6YXo","a9__D53WsaY"],
+    lessons_data:[
+      {id:1,title:"Cloud Computing Basics",duration:"15 min",type:"video",done:false},
+      {id:2,title:"AWS Global Infrastructure",duration:"12 min",type:"video",done:false},
+      {id:3,title:"IAM & Security",duration:"20 min",type:"video",done:false},
+      {id:4,title:"EC2 Instances",duration:"22 min",type:"video",done:false},
+      {id:5,title:"S3 Storage",duration:"18 min",type:"video",done:false},
+      {id:6,title:"RDS Databases",duration:"20 min",type:"video",done:false},
+      {id:7,title:"Lambda Functions",duration:"18 min",type:"video",done:false},
+      {id:8,title:"VPC Networking",duration:"22 min",type:"video",done:false},
+      {id:9,title:"CloudFront & Route 53",duration:"15 min",type:"video",done:false},
+      {id:10,title:"Pricing & Billing",duration:"12 min",type:"video",done:false},
+      {id:11,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"What is EC2?",opts:["Email Cloud 2","Elastic Compute Cloud","Extended Cloud Controller","None"],ans:1},{q:"S3 stands for?",opts:["Simple Storage Service","Server Sync System","Secure Storage Stack","None"],ans:0},{q:"What is IAM?",opts:["Internet Access Manager","Identity and Access Management","Internal Auth Module","None"],ans:1}]
+  },
+  // Security
+  {id:6, title:"Cybersecurity Essentials", category:"Security", lessons:12, hours:5, thumb:"🔐", enrolled:false, progress:0, rating:4.8,
+    videoIds:["inWWhr5tnEA","fKuqYQdqRIs","inWWhr5tnEA","fKuqYQdqRIs","inWWhr5tnEA","fKuqYQdqRIs","inWWhr5tnEA","fKuqYQdqRIs","inWWhr5tnEA","fKuqYQdqRIs","inWWhr5tnEA","fKuqYQdqRIs"],
+    lessons_data:[
+      {id:1,title:"What is Cybersecurity?",duration:"12 min",type:"video",done:false},
+      {id:2,title:"Types of Attacks",duration:"18 min",type:"video",done:false},
+      {id:3,title:"Network Security",duration:"20 min",type:"video",done:false},
+      {id:4,title:"Cryptography Basics",duration:"22 min",type:"video",done:false},
+      {id:5,title:"Ethical Hacking Intro",duration:"25 min",type:"video",done:false},
+      {id:6,title:"SQL Injection & XSS",duration:"20 min",type:"video",done:false},
+      {id:7,title:"Firewalls & IDS",duration:"18 min",type:"video",done:false},
+      {id:8,title:"OWASP Top 10",duration:"22 min",type:"video",done:false},
+      {id:9,title:"Penetration Testing",duration:"25 min",type:"video",done:false},
+      {id:10,title:"Security Tools",duration:"18 min",type:"video",done:false},
+      {id:11,title:"Career Paths",duration:"12 min",type:"video",done:false},
+      {id:12,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"What is phishing?",opts:["Network attack","Social engineering via fake emails","SQL exploit","Malware type"],ans:1},{q:"What does OWASP stand for?",opts:["Open Web Application Security Project","Online Web App Safety Protocol","Only Web Attack Standard Procedure","None"],ans:0},{q:"What is encryption?",opts:["Deleting data","Converting data to unreadable form","Compressing files","None"],ans:1}]
+  },
+  // Deep Learning
+  {id:7, title:"Deep Learning & Neural Networks", category:"ML & AI", lessons:15, hours:8, thumb:"🧠", enrolled:false, progress:0, rating:4.9,
+    videoIds:["aircAruvnKk","PeMlggyqz0Y","ukzFI9rgwfU","nKW8Ndu7Mjw","E0Ld7ZgsuoA","YrtFtGlXbSQ","aircAruvnKk","PeMlggyqz0Y","ukzFI9rgwfU","nKW8Ndu7Mjw","E0Ld7ZgsuoA","YrtFtGlXbSQ","aircAruvnKk","PeMlggyqz0Y","ukzFI9rgwfU"],
+    lessons_data:[
+      {id:1,title:"Neural Network Basics",duration:"18 min",type:"video",done:false},
+      {id:2,title:"Activation Functions",duration:"15 min",type:"video",done:false},
+      {id:3,title:"Backpropagation",duration:"22 min",type:"video",done:false},
+      {id:4,title:"CNNs for Images",duration:"25 min",type:"video",done:false},
+      {id:5,title:"RNNs & LSTMs",duration:"22 min",type:"video",done:false},
+      {id:6,title:"Transfer Learning",duration:"20 min",type:"video",done:false},
+      {id:7,title:"NLP with Transformers",duration:"25 min",type:"video",done:false},
+      {id:8,title:"GANs Introduction",duration:"20 min",type:"video",done:false},
+      {id:9,title:"TensorFlow Basics",duration:"18 min",type:"video",done:false},
+      {id:10,title:"PyTorch Basics",duration:"18 min",type:"video",done:false},
+      {id:11,title:"Building Image Classifier",duration:"25 min",type:"video",done:false},
+      {id:12,title:"Hugging Face Models",duration:"20 min",type:"video",done:false},
+      {id:13,title:"Model Optimization",duration:"18 min",type:"video",done:false},
+      {id:14,title:"DL Career Paths",duration:"12 min",type:"video",done:false},
+      {id:15,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"What is a neural network?",opts:["Database system","System of interconnected nodes mimicking brain","Cloud service","None"],ans:1},{q:"What is dropout?",opts:["Removing layers","Regularization to prevent overfitting","Activation function","None"],ans:1},{q:"CNN stands for?",opts:["Central Neural Network","Convolutional Neural Network","Compact Neuron Net","None"],ans:1}]
+  },
+  // DevOps
+  {id:8, title:"DevOps & CI/CD Pipeline", category:"DevOps", lessons:14, hours:7, thumb:"⚙️", enrolled:false, progress:0, rating:4.7,
+    videoIds:["Xrgk023l5RM","j5Zsa_eOXeY","Xrgk023l5RM","j5Zsa_eOXeY","Xrgk023l5RM","j5Zsa_eOXeY","Xrgk023l5RM","j5Zsa_eOXeY","Xrgk023l5RM","j5Zsa_eOXeY","Xrgk023l5RM","j5Zsa_eOXeY","Xrgk023l5RM","j5Zsa_eOXeY"],
+    lessons_data:[
+      {id:1,title:"DevOps Introduction",duration:"12 min",type:"video",done:false},
+      {id:2,title:"Linux for DevOps",duration:"20 min",type:"video",done:false},
+      {id:3,title:"Git & GitHub",duration:"18 min",type:"video",done:false},
+      {id:4,title:"Docker Basics",duration:"25 min",type:"video",done:false},
+      {id:5,title:"Docker Compose",duration:"20 min",type:"video",done:false},
+      {id:6,title:"Kubernetes Intro",duration:"28 min",type:"video",done:false},
+      {id:7,title:"Jenkins CI/CD",duration:"22 min",type:"video",done:false},
+      {id:8,title:"GitHub Actions",duration:"20 min",type:"video",done:false},
+      {id:9,title:"Ansible Automation",duration:"18 min",type:"video",done:false},
+      {id:10,title:"Monitoring with Grafana",duration:"18 min",type:"video",done:false},
+      {id:11,title:"Infrastructure as Code",duration:"22 min",type:"video",done:false},
+      {id:12,title:"Terraform Basics",duration:"20 min",type:"video",done:false},
+      {id:13,title:"DevOps Best Practices",duration:"15 min",type:"video",done:false},
+      {id:14,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"What is Docker?",opts:["Database tool","Containerization platform","CI/CD tool","None"],ans:1},{q:"What does CI/CD stand for?",opts:["Continuous Integration/Continuous Deployment","Central Infrastructure/Cloud Delivery","None","Custom Install/Config Deploy"],ans:0},{q:"What is Kubernetes used for?",opts:["Database management","Container orchestration","Network routing","None"],ans:1}]
+  },
+  // SQL
+  {id:9, title:"SQL & Database Fundamentals", category:"Data Science", lessons:12, hours:5, thumb:"🗄️", enrolled:false, progress:0, rating:4.8,
+    videoIds:["HXV3zeQKqGY","7S_tz1z_5bA","HXV3zeQKqGY","7S_tz1z_5bA","HXV3zeQKqGY","7S_tz1z_5bA","HXV3zeQKqGY","7S_tz1z_5bA","HXV3zeQKqGY","7S_tz1z_5bA","HXV3zeQKqGY","7S_tz1z_5bA"],
+    lessons_data:[
+      {id:1,title:"Introduction to Databases",duration:"12 min",type:"video",done:false},
+      {id:2,title:"SQL Basics - SELECT",duration:"18 min",type:"video",done:false},
+      {id:3,title:"WHERE, ORDER BY, LIMIT",duration:"15 min",type:"video",done:false},
+      {id:4,title:"JOINs",duration:"22 min",type:"video",done:false},
+      {id:5,title:"GROUP BY & Aggregates",duration:"20 min",type:"video",done:false},
+      {id:6,title:"Subqueries",duration:"18 min",type:"video",done:false},
+      {id:7,title:"Database Design & ER",duration:"22 min",type:"video",done:false},
+      {id:8,title:"Indexes & Performance",duration:"20 min",type:"video",done:false},
+      {id:9,title:"Stored Procedures",duration:"18 min",type:"video",done:false},
+      {id:10,title:"Transactions & ACID",duration:"15 min",type:"video",done:false},
+      {id:11,title:"PostgreSQL vs MySQL",duration:"15 min",type:"video",done:false},
+      {id:12,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"What does SQL stand for?",opts:["Structured Query Language","Simple Question Logic","System Query Layer","None"],ans:0},{q:"Which JOIN returns all rows from both tables?",opts:["INNER JOIN","LEFT JOIN","RIGHT JOIN","FULL OUTER JOIN"],ans:3},{q:"What does GROUP BY do?",opts:["Sorts results","Groups rows by column values","Filters duplicates","None"],ans:1}]
+  },
+  // Python
+  {id:10, title:"Python for Beginners", category:"Programming", lessons:18, hours:6, thumb:"🐍", enrolled:false, progress:0, rating:4.9,
+    videoIds:["_uQrJ0TkZlc","rfscVS0vtbw","_uQrJ0TkZlc","rfscVS0vtbw","_uQrJ0TkZlc","rfscVS0vtbw","_uQrJ0TkZlc","rfscVS0vtbw","_uQrJ0TkZlc","rfscVS0vtbw","_uQrJ0TkZlc","rfscVS0vtbw","_uQrJ0TkZlc","rfscVS0vtbw","_uQrJ0TkZlc","rfscVS0vtbw","_uQrJ0TkZlc","rfscVS0vtbw"],
+    lessons_data:[
+      {id:1,title:"Python Installation",duration:"10 min",type:"video",done:false},
+      {id:2,title:"Variables & Data Types",duration:"15 min",type:"video",done:false},
+      {id:3,title:"Strings & String Methods",duration:"18 min",type:"video",done:false},
+      {id:4,title:"Lists & Tuples",duration:"20 min",type:"video",done:false},
+      {id:5,title:"Dictionaries & Sets",duration:"18 min",type:"video",done:false},
+      {id:6,title:"If/Else Conditions",duration:"15 min",type:"video",done:false},
+      {id:7,title:"Loops (for, while)",duration:"18 min",type:"video",done:false},
+      {id:8,title:"Functions",duration:"22 min",type:"video",done:false},
+      {id:9,title:"OOP - Classes & Objects",duration:"25 min",type:"video",done:false},
+      {id:10,title:"File Handling",duration:"18 min",type:"video",done:false},
+      {id:11,title:"Error Handling",duration:"15 min",type:"video",done:false},
+      {id:12,title:"Modules & Packages",duration:"18 min",type:"video",done:false},
+      {id:13,title:"Virtual Environments",duration:"12 min",type:"video",done:false},
+      {id:14,title:"Mini Project: Calculator",duration:"20 min",type:"video",done:false},
+      {id:15,title:"Mini Project: To-Do App",duration:"22 min",type:"video",done:false},
+      {id:16,title:"Python Best Practices",duration:"15 min",type:"video",done:false},
+      {id:17,title:"Python 3.12 Features",duration:"12 min",type:"video",done:false},
+      {id:18,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"Which keyword defines a function in Python?",opts:["func","def","function","define"],ans:1},{q:"What is a list in Python?",opts:["Immutable sequence","Mutable ordered collection","Key-value pairs","None"],ans:1},{q:"What does len() do?",opts:["Converts to list","Returns length","Loops over elements","None"],ans:1}]
+  },
+  // JavaScript
+  {id:11, title:"JavaScript Mastery", category:"Web Dev", lessons:20, hours:9, thumb:"🌐", enrolled:false, progress:0, rating:4.8,
+    videoIds:["PkZNo7MFNFg","Qqx_wzMmFeA","PkZNo7MFNFg","Qqx_wzMmFeA","PkZNo7MFNFg","Qqx_wzMmFeA","PkZNo7MFNFg","Qqx_wzMmFeA","PkZNo7MFNFg","Qqx_wzMmFeA","PkZNo7MFNFg","Qqx_wzMmFeA","PkZNo7MFNFg","Qqx_wzMmFeA","PkZNo7MFNFg","Qqx_wzMmFeA","PkZNo7MFNFg","Qqx_wzMmFeA","PkZNo7MFNFg","Qqx_wzMmFeA"],
+    lessons_data:[
+      {id:1,title:"JS Basics",duration:"15 min",type:"video",done:false},{id:2,title:"Variables & Scope",duration:"18 min",type:"video",done:false},
+      {id:3,title:"Functions & Arrow Functions",duration:"20 min",type:"video",done:false},{id:4,title:"Arrays & Methods",duration:"22 min",type:"video",done:false},
+      {id:5,title:"Objects & Prototypes",duration:"20 min",type:"video",done:false},{id:6,title:"DOM Manipulation",duration:"25 min",type:"video",done:false},
+      {id:7,title:"Events",duration:"18 min",type:"video",done:false},{id:8,title:"Promises & Async/Await",duration:"22 min",type:"video",done:false},
+      {id:9,title:"Fetch API",duration:"18 min",type:"video",done:false},{id:10,title:"ES6+ Features",duration:"20 min",type:"video",done:false},
+      {id:11,title:"Error Handling",duration:"15 min",type:"video",done:false},{id:12,title:"Closures",duration:"18 min",type:"video",done:false},
+      {id:13,title:"Event Loop",duration:"20 min",type:"video",done:false},{id:14,title:"LocalStorage",duration:"15 min",type:"video",done:false},
+      {id:15,title:"Modules & Bundlers",duration:"18 min",type:"video",done:false},{id:16,title:"TypeScript Intro",duration:"22 min",type:"video",done:false},
+      {id:17,title:"Testing with Jest",duration:"18 min",type:"video",done:false},{id:18,title:"JS Project: Weather App",duration:"28 min",type:"video",done:false},
+      {id:19,title:"JS Best Practices",duration:"15 min",type:"video",done:false},{id:20,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"What is 'typeof null' in JavaScript?",opts:["null","object","undefined","string"],ans:1},{q:"What does === check?",opts:["Value only","Value and type","Reference","None"],ans:1},{q:"What is closure?",opts:["A type of loop","Function with access to outer scope","Module system","None"],ans:1}]
+  },
+  // Data Viz
+  {id:12, title:"Data Visualization with Tableau", category:"Data Science", lessons:10, hours:5, thumb:"📈", enrolled:false, progress:0, rating:4.6,
+    videoIds:["TPMlZxRRaBQ","5WN66OOMN2I","TPMlZxRRaBQ","5WN66OOMN2I","TPMlZxRRaBQ","5WN66OOMN2I","TPMlZxRRaBQ","5WN66OOMN2I","TPMlZxRRaBQ","5WN66OOMN2I"],
+    lessons_data:[
+      {id:1,title:"Tableau Introduction",duration:"12 min",type:"video",done:false},{id:2,title:"Connecting Data Sources",duration:"18 min",type:"video",done:false},
+      {id:3,title:"Bar & Line Charts",duration:"15 min",type:"video",done:false},{id:4,title:"Pie & Scatter Charts",duration:"15 min",type:"video",done:false},
+      {id:5,title:"Dashboards",duration:"22 min",type:"video",done:false},{id:6,title:"Filters & Parameters",duration:"20 min",type:"video",done:false},
+      {id:7,title:"Calculated Fields",duration:"18 min",type:"video",done:false},{id:8,title:"Maps",duration:"15 min",type:"video",done:false},
+      {id:9,title:"Tableau Public & Sharing",duration:"12 min",type:"video",done:false},{id:10,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"Tableau is a tool for?",opts:["Web development","Data visualization","Cloud hosting","None"],ans:1},{q:"What is a Tableau dashboard?",opts:["Single chart","Collection of views","Database","None"],ans:1},{q:"Tableau Public is?",opts:["Paid product","Free sharing platform","API tool","None"],ans:1}]
+  },
+  // GCP
+  {id:13, title:"Google Cloud Platform Essentials", category:"Cloud", lessons:12, hours:6, thumb:"🌩️", enrolled:false, progress:0, rating:4.7,
+    videoIds:["M988_fsOSWo","4D3X6GmRTBY","M988_fsOSWo","4D3X6GmRTBY","M988_fsOSWo","4D3X6GmRTBY","M988_fsOSWo","4D3X6GmRTBY","M988_fsOSWo","4D3X6GmRTBY","M988_fsOSWo","4D3X6GmRTBY"],
+    lessons_data:[
+      {id:1,title:"GCP Overview",duration:"12 min",type:"video",done:false},{id:2,title:"Compute Engine",duration:"20 min",type:"video",done:false},
+      {id:3,title:"Cloud Storage",duration:"18 min",type:"video",done:false},{id:4,title:"Cloud Functions",duration:"18 min",type:"video",done:false},
+      {id:5,title:"BigQuery",duration:"22 min",type:"video",done:false},{id:6,title:"Cloud Run",duration:"18 min",type:"video",done:false},
+      {id:7,title:"Kubernetes on GKE",duration:"25 min",type:"video",done:false},{id:8,title:"Cloud IAM",duration:"18 min",type:"video",done:false},
+      {id:9,title:"VPC Networking",duration:"20 min",type:"video",done:false},{id:10,title:"Cloud AI APIs",duration:"18 min",type:"video",done:false},
+      {id:11,title:"Cost Management",duration:"15 min",type:"video",done:false},{id:12,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"BigQuery is a?",opts:["NoSQL DB","Serverless data warehouse","VM service","None"],ans:1},{q:"GCP stands for?",opts:["Google Cloud Platform","Global Cloud Provider","Google Compute Platform","None"],ans:0},{q:"What is Cloud Run?",opts:["Container execution service","Storage service","VM service","None"],ans:0}]
+  },
+  // Mobile Dev
+  {id:14, title:"Flutter & Dart Mobile Dev", category:"Mobile", lessons:16, hours:8, thumb:"📱", enrolled:false, progress:0, rating:4.8,
+    videoIds:["VPvVD8t02U8","x0uinJvhNxI","VPvVD8t02U8","x0uinJvhNxI","VPvVD8t02U8","x0uinJvhNxI","VPvVD8t02U8","x0uinJvhNxI","VPvVD8t02U8","x0uinJvhNxI","VPvVD8t02U8","x0uinJvhNxI","VPvVD8t02U8","x0uinJvhNxI","VPvVD8t02U8","x0uinJvhNxI"],
+    lessons_data:[
+      {id:1,title:"Flutter Introduction",duration:"12 min",type:"video",done:false},{id:2,title:"Dart Basics",duration:"20 min",type:"video",done:false},
+      {id:3,title:"Widgets Overview",duration:"22 min",type:"video",done:false},{id:4,title:"Stateful & Stateless",duration:"20 min",type:"video",done:false},
+      {id:5,title:"Layouts & Containers",duration:"18 min",type:"video",done:false},{id:6,title:"Navigation & Routes",duration:"18 min",type:"video",done:false},
+      {id:7,title:"Forms & Validation",duration:"20 min",type:"video",done:false},{id:8,title:"HTTP & APIs",duration:"22 min",type:"video",done:false},
+      {id:9,title:"State Management (Provider)",duration:"25 min",type:"video",done:false},{id:10,title:"Firebase Integration",duration:"22 min",type:"video",done:false},
+      {id:11,title:"Local Storage",duration:"15 min",type:"video",done:false},{id:12,title:"Animations",duration:"18 min",type:"video",done:false},
+      {id:13,title:"Publishing to Play Store",duration:"15 min",type:"video",done:false},{id:14,title:"Publishing to App Store",duration:"15 min",type:"video",done:false},
+      {id:15,title:"Flutter Best Practices",duration:"12 min",type:"video",done:false},{id:16,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"Flutter is built on which language?",opts:["Java","Kotlin","Dart","Swift"],ans:2},{q:"What is a Widget in Flutter?",opts:["A function","UI building block","Database","None"],ans:1},{q:"Hot reload in Flutter means?",opts:["Restart app","See changes without restarting","Deploy to store","None"],ans:1}]
+  },
+  // UI/UX
+  {id:15, title:"UI/UX Design Fundamentals", category:"Design", lessons:14, hours:6, thumb:"🎨", enrolled:false, progress:0, rating:4.7,
+    videoIds:["c9Wg6Cb_YlU","68w2VwalD5s","c9Wg6Cb_YlU","68w2VwalD5s","c9Wg6Cb_YlU","68w2VwalD5s","c9Wg6Cb_YlU","68w2VwalD5s","c9Wg6Cb_YlU","68w2VwalD5s","c9Wg6Cb_YlU","68w2VwalD5s","c9Wg6Cb_YlU","68w2VwalD5s"],
+    lessons_data:[
+      {id:1,title:"Design Thinking",duration:"15 min",type:"video",done:false},{id:2,title:"UX Research Methods",duration:"20 min",type:"video",done:false},
+      {id:3,title:"Wireframing Basics",duration:"18 min",type:"video",done:false},{id:4,title:"Prototyping",duration:"20 min",type:"video",done:false},
+      {id:5,title:"Color Theory",duration:"18 min",type:"video",done:false},{id:6,title:"Typography",duration:"15 min",type:"video",done:false},
+      {id:7,title:"Figma Basics",duration:"25 min",type:"video",done:false},{id:8,title:"Figma Advanced",duration:"25 min",type:"video",done:false},
+      {id:9,title:"Accessibility",duration:"15 min",type:"video",done:false},{id:10,title:"Responsive Design",duration:"18 min",type:"video",done:false},
+      {id:11,title:"Design Systems",duration:"20 min",type:"video",done:false},{id:12,title:"Usability Testing",duration:"18 min",type:"video",done:false},
+      {id:13,title:"Portfolio Building",duration:"15 min",type:"video",done:false},{id:14,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"What is UX?",opts:["User Experience","User Extension","UI Exchange","None"],ans:0},{q:"What is a wireframe?",opts:["Final design","Low-fidelity layout sketch","Color palette","None"],ans:1},{q:"Figma is a tool for?",opts:["Coding","Database design","UI/UX design","None"],ans:2}]
+  },
+  // Blockchain
+  {id:16, title:"Blockchain & Web3 Development", category:"Blockchain", lessons:12, hours:6, thumb:"🔗", enrolled:false, progress:0, rating:4.5,
+    videoIds:["SSo_EIwHSd4","gyMwXuJrbJQ","SSo_EIwHSd4","gyMwXuJrbJQ","SSo_EIwHSd4","gyMwXuJrbJQ","SSo_EIwHSd4","gyMwXuJrbJQ","SSo_EIwHSd4","gyMwXuJrbJQ","SSo_EIwHSd4","gyMwXuJrbJQ"],
+    lessons_data:[
+      {id:1,title:"What is Blockchain?",duration:"15 min",type:"video",done:false},{id:2,title:"Ethereum & Smart Contracts",duration:"22 min",type:"video",done:false},
+      {id:3,title:"Solidity Basics",duration:"25 min",type:"video",done:false},{id:4,title:"DeFi Introduction",duration:"18 min",type:"video",done:false},
+      {id:5,title:"NFTs Explained",duration:"15 min",type:"video",done:false},{id:6,title:"Web3.js & Ethers.js",duration:"22 min",type:"video",done:false},
+      {id:7,title:"Hardhat & Testing",duration:"20 min",type:"video",done:false},{id:8,title:"IPFS Storage",duration:"15 min",type:"video",done:false},
+      {id:9,title:"DAOs",duration:"15 min",type:"video",done:false},{id:10,title:"Building a DApp",duration:"28 min",type:"video",done:false},
+      {id:11,title:"Security in Solidity",duration:"20 min",type:"video",done:false},{id:12,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"What is a smart contract?",opts:["AI program","Self-executing code on blockchain","Database table","None"],ans:1},{q:"Ethereum's native language is?",opts:["JavaScript","Python","Solidity","Rust"],ans:2},{q:"DeFi stands for?",opts:["Decentralized Finance","Digital Finance","Distributed Fiat","None"],ans:0}]
+  },
+  // Power BI
+  {id:17, title:"Power BI for Business Analytics", category:"Data Science", lessons:10, hours:5, thumb:"📉", enrolled:false, progress:0, rating:4.6,
+    videoIds:["AGrl-H87pRU","TmhQCQr_Cjc","AGrl-H87pRU","TmhQCQr_Cjc","AGrl-H87pRU","TmhQCQr_Cjc","AGrl-H87pRU","TmhQCQr_Cjc","AGrl-H87pRU","TmhQCQr_Cjc"],
+    lessons_data:[
+      {id:1,title:"Power BI Intro",duration:"12 min",type:"video",done:false},{id:2,title:"Importing Data",duration:"15 min",type:"video",done:false},
+      {id:3,title:"Power Query",duration:"20 min",type:"video",done:false},{id:4,title:"DAX Basics",duration:"22 min",type:"video",done:false},
+      {id:5,title:"Creating Visuals",duration:"18 min",type:"video",done:false},{id:6,title:"Building Dashboards",duration:"22 min",type:"video",done:false},
+      {id:7,title:"Filters & Slicers",duration:"15 min",type:"video",done:false},{id:8,title:"Publishing Reports",duration:"12 min",type:"video",done:false},
+      {id:9,title:"Power BI Service",duration:"15 min",type:"video",done:false},{id:10,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"DAX stands for?",opts:["Data Analysis Expressions","Dynamic Analytics Exchange","Data Access Extension","None"],ans:0},{q:"Power BI Desktop is?",opts:["Web-only tool","Desktop application","Mobile app","None"],ans:1},{q:"What is a slicer in Power BI?",opts:["Filter control","Chart type","Data import","None"],ans:0}]
+  },
+  // NLP
+  {id:18, title:"Natural Language Processing (NLP)", category:"ML & AI", lessons:12, hours:6, thumb:"💬", enrolled:false, progress:0, rating:4.8,
+    videoIds:["X2vAabgKiWM","fOvTtapxa9I","X2vAabgKiWM","fOvTtapxa9I","X2vAabgKiWM","fOvTtapxa9I","X2vAabgKiWM","fOvTtapxa9I","X2vAabgKiWM","fOvTtapxa9I","X2vAabgKiWM","fOvTtapxa9I"],
+    lessons_data:[
+      {id:1,title:"NLP Overview",duration:"12 min",type:"video",done:false},{id:2,title:"Text Preprocessing",duration:"18 min",type:"video",done:false},
+      {id:3,title:"Tokenization & Stemming",duration:"15 min",type:"video",done:false},{id:4,title:"Bag of Words & TF-IDF",duration:"18 min",type:"video",done:false},
+      {id:5,title:"Word Embeddings",duration:"20 min",type:"video",done:false},{id:6,title:"Sentiment Analysis",duration:"20 min",type:"video",done:false},
+      {id:7,title:"Named Entity Recognition",duration:"18 min",type:"video",done:false},{id:8,title:"Transformers & BERT",duration:"25 min",type:"video",done:false},
+      {id:9,title:"GPT Models",duration:"20 min",type:"video",done:false},{id:10,title:"spaCy Library",duration:"18 min",type:"video",done:false},
+      {id:11,title:"Building a Chatbot",duration:"25 min",type:"video",done:false},{id:12,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"NLP stands for?",opts:["Natural Language Processing","Neural Logic Programming","None","Network Layer Protocol"],ans:0},{q:"BERT was created by?",opts:["OpenAI","Google","Meta","Microsoft"],ans:1},{q:"What is tokenization?",opts:["Encrypting text","Splitting text into tokens","None","Compressing text"],ans:1}]
+  },
+  // Excel
+  {id:19, title:"Microsoft Excel Mastery", category:"Productivity", lessons:14, hours:6, thumb:"📋", enrolled:false, progress:0, rating:4.7,
+    videoIds:["rwbho0CgEAI","K74l26pE4YA","rwbho0CgEAI","K74l26pE4YA","rwbho0CgEAI","K74l26pE4YA","rwbho0CgEAI","K74l26pE4YA","rwbho0CgEAI","K74l26pE4YA","rwbho0CgEAI","K74l26pE4YA","rwbho0CgEAI","K74l26pE4YA"],
+    lessons_data:[
+      {id:1,title:"Excel Basics",duration:"12 min",type:"video",done:false},{id:2,title:"Formulas & Functions",duration:"20 min",type:"video",done:false},
+      {id:3,title:"VLOOKUP & HLOOKUP",duration:"18 min",type:"video",done:false},{id:4,title:"INDEX MATCH",duration:"18 min",type:"video",done:false},
+      {id:5,title:"Pivot Tables",duration:"22 min",type:"video",done:false},{id:6,title:"Charts & Graphs",duration:"18 min",type:"video",done:false},
+      {id:7,title:"Conditional Formatting",duration:"15 min",type:"video",done:false},{id:8,title:"Data Validation",duration:"15 min",type:"video",done:false},
+      {id:9,title:"Power Query",duration:"20 min",type:"video",done:false},{id:10,title:"Macros & VBA Intro",duration:"25 min",type:"video",done:false},
+      {id:11,title:"Financial Modeling",duration:"25 min",type:"video",done:false},{id:12,title:"Excel Shortcuts",duration:"12 min",type:"video",done:false},
+      {id:13,title:"Excel for Data Analysis",duration:"20 min",type:"video",done:false},{id:14,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"What is VLOOKUP used for?",opts:["Sorting data","Looking up values in a table","Creating charts","None"],ans:1},{q:"Pivot tables are used for?",opts:["Writing formulas","Summarizing large datasets","Formatting","None"],ans:1},{q:"Which shortcut saves an Excel file?",opts:["Ctrl+P","Ctrl+S","Ctrl+Z","Ctrl+X"],ans:1}]
+  },
+  // DSA
+  {id:20, title:"Data Structures & Algorithms", category:"Engineering", lessons:20, hours:12, thumb:"🔢", enrolled:false, progress:0, rating:4.9,
+    videoIds:["RBSGKlAvoiM","09_LlHjoEiY","RBSGKlAvoiM","09_LlHjoEiY","RBSGKlAvoiM","09_LlHjoEiY","RBSGKlAvoiM","09_LlHjoEiY","RBSGKlAvoiM","09_LlHjoEiY","RBSGKlAvoiM","09_LlHjoEiY","RBSGKlAvoiM","09_LlHjoEiY","RBSGKlAvoiM","09_LlHjoEiY","RBSGKlAvoiM","09_LlHjoEiY","RBSGKlAvoiM","09_LlHjoEiY"],
+    lessons_data:[
+      {id:1,title:"Big O Notation",duration:"15 min",type:"video",done:false},{id:2,title:"Arrays",duration:"18 min",type:"video",done:false},
+      {id:3,title:"Linked Lists",duration:"22 min",type:"video",done:false},{id:4,title:"Stacks & Queues",duration:"20 min",type:"video",done:false},
+      {id:5,title:"Hash Tables",duration:"20 min",type:"video",done:false},{id:6,title:"Trees",duration:"22 min",type:"video",done:false},
+      {id:7,title:"Binary Search Trees",duration:"20 min",type:"video",done:false},{id:8,title:"Heaps",duration:"18 min",type:"video",done:false},
+      {id:9,title:"Graphs",duration:"22 min",type:"video",done:false},{id:10,title:"BFS & DFS",duration:"20 min",type:"video",done:false},
+      {id:11,title:"Sorting Algorithms",duration:"25 min",type:"video",done:false},{id:12,title:"Binary Search",duration:"15 min",type:"video",done:false},
+      {id:13,title:"Recursion",duration:"20 min",type:"video",done:false},{id:14,title:"Dynamic Programming",duration:"30 min",type:"video",done:false},
+      {id:15,title:"Greedy Algorithms",duration:"20 min",type:"video",done:false},{id:16,title:"Sliding Window",duration:"18 min",type:"video",done:false},
+      {id:17,title:"Two Pointers",duration:"18 min",type:"video",done:false},{id:18,title:"LeetCode Patterns",duration:"25 min",type:"video",done:false},
+      {id:19,title:"Interview Prep",duration:"20 min",type:"video",done:false},{id:20,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"What is O(n) time complexity?",opts:["Constant","Linear","Quadratic","Logarithmic"],ans:1},{q:"Which data structure uses LIFO?",opts:["Queue","Heap","Stack","Graph"],ans:2},{q:"Binary search works on?",opts:["Linked lists","Sorted arrays","Hash tables","Trees"],ans:1}]
+  },
+  // Angular
+  {id:21, title:"Angular Framework Complete", category:"Web Dev", lessons:15, hours:7, thumb:"🔴", enrolled:false, progress:0, rating:4.6,
+    videoIds:["3dHNOWTI7H8","htPYK6QxacQ","3dHNOWTI7H8","htPYK6QxacQ","3dHNOWTI7H8","htPYK6QxacQ","3dHNOWTI7H8","htPYK6QxacQ","3dHNOWTI7H8","htPYK6QxacQ","3dHNOWTI7H8","htPYK6QxacQ","3dHNOWTI7H8","htPYK6QxacQ","3dHNOWTI7H8"],
+    lessons_data:[
+      {id:1,title:"Angular Setup",duration:"12 min",type:"video",done:false},{id:2,title:"Components",duration:"18 min",type:"video",done:false},
+      {id:3,title:"Templates & Directives",duration:"20 min",type:"video",done:false},{id:4,title:"Data Binding",duration:"18 min",type:"video",done:false},
+      {id:5,title:"Services & DI",duration:"22 min",type:"video",done:false},{id:6,title:"Routing",duration:"20 min",type:"video",done:false},
+      {id:7,title:"Forms (Template-Driven)",duration:"18 min",type:"video",done:false},{id:8,title:"Reactive Forms",duration:"20 min",type:"video",done:false},
+      {id:9,title:"HTTP Client",duration:"18 min",type:"video",done:false},{id:10,title:"RxJS",duration:"22 min",type:"video",done:false},
+      {id:11,title:"NgRx State Management",duration:"25 min",type:"video",done:false},{id:12,title:"Pipes",duration:"15 min",type:"video",done:false},
+      {id:13,title:"Angular Testing",duration:"20 min",type:"video",done:false},{id:14,title:"Building & Deploying",duration:"15 min",type:"video",done:false},
+      {id:15,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"Angular is built with?",opts:["JavaScript","TypeScript","Dart","CoffeeScript"],ans:1},{q:"What is dependency injection?",opts:["Import style","Design pattern for providing dependencies","Database query","None"],ans:1},{q:"RxJS is used for?",opts:["Styling","Reactive programming with observables","Testing","None"],ans:1}]
+  },
+  // Gen AI
+  {id:22, title:"Generative AI & Prompt Engineering", category:"ML & AI", lessons:10, hours:4, thumb:"✨", enrolled:false, progress:0, rating:4.9,
+    videoIds:["1bUy-1hGZpI","jtXAhGtO_yE","1bUy-1hGZpI","jtXAhGtO_yE","1bUy-1hGZpI","jtXAhGtO_yE","1bUy-1hGZpI","jtXAhGtO_yE","1bUy-1hGZpI","jtXAhGtO_yE"],
+    lessons_data:[
+      {id:1,title:"What is Generative AI?",duration:"12 min",type:"video",done:false},{id:2,title:"LLMs Explained",duration:"18 min",type:"video",done:false},
+      {id:3,title:"Prompt Engineering Basics",duration:"20 min",type:"video",done:false},{id:4,title:"Advanced Prompting",duration:"22 min",type:"video",done:false},
+      {id:5,title:"RAG Systems",duration:"20 min",type:"video",done:false},{id:6,title:"LangChain",duration:"22 min",type:"video",done:false},
+      {id:7,title:"Fine-tuning Models",duration:"20 min",type:"video",done:false},{id:8,title:"AI Ethics & Safety",duration:"15 min",type:"video",done:false},
+      {id:9,title:"Building AI Applications",duration:"25 min",type:"video",done:false},{id:10,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"What is prompt engineering?",opts:["Coding prompts","Crafting effective inputs for AI","AI training","None"],ans:1},{q:"RAG stands for?",opts:["Retrieval Augmented Generation","Rapid AI Generation","None","Random Action Gradient"],ans:0},{q:"LLM stands for?",opts:["Large Language Model","Low Level Machine","Logic Layer Model","None"],ans:0}]
+  },
+  // Azure
+  {id:23, title:"Microsoft Azure Fundamentals", category:"Cloud", lessons:12, hours:6, thumb:"🔷", enrolled:false, progress:0, rating:4.7,
+    videoIds:["NKEFWyqJ5XA","isxrun2_DQo","NKEFWyqJ5XA","isxrun2_DQo","NKEFWyqJ5XA","isxrun2_DQo","NKEFWyqJ5XA","isxrun2_DQo","NKEFWyqJ5XA","isxrun2_DQo","NKEFWyqJ5XA","isxrun2_DQo"],
+    lessons_data:[
+      {id:1,title:"Azure Overview",duration:"12 min",type:"video",done:false},{id:2,title:"Azure Virtual Machines",duration:"20 min",type:"video",done:false},
+      {id:3,title:"Azure Blob Storage",duration:"18 min",type:"video",done:false},{id:4,title:"Azure SQL Database",duration:"20 min",type:"video",done:false},
+      {id:5,title:"Azure Functions",duration:"18 min",type:"video",done:false},{id:6,title:"Azure DevOps",duration:"22 min",type:"video",done:false},
+      {id:7,title:"Azure Active Directory",duration:"18 min",type:"video",done:false},{id:8,title:"Azure Networking",duration:"20 min",type:"video",done:false},
+      {id:9,title:"Azure Kubernetes Service",duration:"22 min",type:"video",done:false},{id:10,title:"Azure AI Services",duration:"18 min",type:"video",done:false},
+      {id:11,title:"Azure Cost Management",duration:"12 min",type:"video",done:false},{id:12,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"Azure is a product of?",opts:["Google","Amazon","Microsoft","IBM"],ans:2},{q:"Azure Blob is used for?",opts:["Compute","Object storage","Networking","None"],ans:1},{q:"AKS stands for?",opts:["Azure Key Service","Azure Kubernetes Service","Advanced Kernel System","None"],ans:1}]
+  },
+  // Java
+  {id:24, title:"Core Java Programming", category:"Programming", lessons:18, hours:9, thumb:"☕", enrolled:false, progress:0, rating:4.7,
+    videoIds:["eIrMbAQSU34","grEKMHGYyns","eIrMbAQSU34","grEKMHGYyns","eIrMbAQSU34","grEKMHGYyns","eIrMbAQSU34","grEKMHGYyns","eIrMbAQSU34","grEKMHGYyns","eIrMbAQSU34","grEKMHGYyns","eIrMbAQSU34","grEKMHGYyns","eIrMbAQSU34","grEKMHGYyns","eIrMbAQSU34","grEKMHGYyns"],
+    lessons_data:[
+      {id:1,title:"Java Introduction",duration:"12 min",type:"video",done:false},{id:2,title:"Variables & Types",duration:"15 min",type:"video",done:false},
+      {id:3,title:"Control Flow",duration:"18 min",type:"video",done:false},{id:4,title:"OOP Concepts",duration:"25 min",type:"video",done:false},
+      {id:5,title:"Inheritance",duration:"20 min",type:"video",done:false},{id:6,title:"Polymorphism",duration:"20 min",type:"video",done:false},
+      {id:7,title:"Interfaces & Abstract",duration:"18 min",type:"video",done:false},{id:8,title:"Collections Framework",duration:"25 min",type:"video",done:false},
+      {id:9,title:"Generics",duration:"18 min",type:"video",done:false},{id:10,title:"Exception Handling",duration:"18 min",type:"video",done:false},
+      {id:11,title:"File I/O",duration:"15 min",type:"video",done:false},{id:12,title:"Multithreading",duration:"22 min",type:"video",done:false},
+      {id:13,title:"Java Streams",duration:"20 min",type:"video",done:false},{id:14,title:"Lambda Expressions",duration:"18 min",type:"video",done:false},
+      {id:15,title:"Spring Boot Intro",duration:"25 min",type:"video",done:false},{id:16,title:"Unit Testing (JUnit)",duration:"18 min",type:"video",done:false},
+      {id:17,title:"Java Best Practices",duration:"15 min",type:"video",done:false},{id:18,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"Java is platform independent because of?",opts:["Compiler","JVM","OS support","None"],ans:1},{q:"What is polymorphism?",opts:["One class one method","Same method different behavior","Multiple inheritance","None"],ans:1},{q:"Which is not a collection?",opts:["ArrayList","HashMap","LinkedList","String"],ans:3}]
+  },
+  // Statistics
+  {id:25, title:"Statistics for Data Science", category:"Data Science", lessons:12, hours:6, thumb:"📐", enrolled:false, progress:0, rating:4.8,
+    videoIds:["xxpc-HPKN28","sxQaBpKfDRk","xxpc-HPKN28","sxQaBpKfDRk","xxpc-HPKN28","sxQaBpKfDRk","xxpc-HPKN28","sxQaBpKfDRk","xxpc-HPKN28","sxQaBpKfDRk","xxpc-HPKN28","sxQaBpKfDRk"],
+    lessons_data:[
+      {id:1,title:"Descriptive Statistics",duration:"15 min",type:"video",done:false},{id:2,title:"Probability Basics",duration:"18 min",type:"video",done:false},
+      {id:3,title:"Distributions",duration:"20 min",type:"video",done:false},{id:4,title:"Hypothesis Testing",duration:"22 min",type:"video",done:false},
+      {id:5,title:"T-Tests",duration:"18 min",type:"video",done:false},{id:6,title:"ANOVA",duration:"18 min",type:"video",done:false},
+      {id:7,title:"Correlation & Regression",duration:"22 min",type:"video",done:false},{id:8,title:"Bayes Theorem",duration:"20 min",type:"video",done:false},
+      {id:9,title:"Sampling Methods",duration:"15 min",type:"video",done:false},{id:10,title:"Statistics with Python",duration:"20 min",type:"video",done:false},
+      {id:11,title:"A/B Testing",duration:"18 min",type:"video",done:false},{id:12,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"Mean is?",opts:["Middle value","Most frequent","Sum/Count","None"],ans:2},{q:"Standard deviation measures?",opts:["Central tendency","Spread of data","Skewness","None"],ans:1},{q:"P-value < 0.05 means?",opts:["Null hypothesis accepted","Null hypothesis rejected","Data is normal","None"],ans:1}]
+  },
+  // R Programming
+  {id:26, title:"R Programming for Data Science", category:"Data Science", lessons:12, hours:6, thumb:"📊", enrolled:false, progress:0, rating:4.5,
+    videoIds:["_V8eKsto3Ug","BvKETej6guM","_V8eKsto3Ug","BvKETej6guM","_V8eKsto3Ug","BvKETej6guM","_V8eKsto3Ug","BvKETej6guM","_V8eKsto3Ug","BvKETej6guM","_V8eKsto3Ug","BvKETej6guM"],
+    lessons_data:[
+      {id:1,title:"R Introduction",duration:"12 min",type:"video",done:false},{id:2,title:"Data Types in R",duration:"15 min",type:"video",done:false},
+      {id:3,title:"Vectors & Matrices",duration:"18 min",type:"video",done:false},{id:4,title:"Data Frames",duration:"20 min",type:"video",done:false},
+      {id:5,title:"ggplot2 Visualization",duration:"22 min",type:"video",done:false},{id:6,title:"dplyr for Data Wrangling",duration:"20 min",type:"video",done:false},
+      {id:7,title:"Statistical Tests in R",duration:"20 min",type:"video",done:false},{id:8,title:"Linear Regression in R",duration:"22 min",type:"video",done:false},
+      {id:9,title:"Time Series in R",duration:"20 min",type:"video",done:false},{id:10,title:"R Markdown",duration:"15 min",type:"video",done:false},
+      {id:11,title:"Shiny Web Apps",duration:"22 min",type:"video",done:false},{id:12,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"R is primarily used for?",opts:["Web development","Statistical computing","Game development","None"],ans:1},{q:"ggplot2 is for?",opts:["Web scraping","Data visualization","Database queries","None"],ans:1},{q:"dplyr is for?",opts:["Data wrangling","Machine learning","Plotting","None"],ans:0}]
+  },
+  // Product Management
+  {id:27, title:"Product Management Fundamentals", category:"Business", lessons:12, hours:6, thumb:"🚀", enrolled:false, progress:0, rating:4.7,
+    videoIds:["loFX3uDO_cU","0phuWqyStMo","loFX3uDO_cU","0phuWqyStMo","loFX3uDO_cU","0phuWqyStMo","loFX3uDO_cU","0phuWqyStMo","loFX3uDO_cU","0phuWqyStMo","loFX3uDO_cU","0phuWqyStMo"],
+    lessons_data:[
+      {id:1,title:"What is Product Management?",duration:"12 min",type:"video",done:false},{id:2,title:"Product Thinking",duration:"18 min",type:"video",done:false},
+      {id:3,title:"User Research",duration:"20 min",type:"video",done:false},{id:4,title:"Prioritization Frameworks",duration:"20 min",type:"video",done:false},
+      {id:5,title:"Writing PRDs",duration:"18 min",type:"video",done:false},{id:6,title:"Agile & Scrum",duration:"20 min",type:"video",done:false},
+      {id:7,title:"Product Metrics",duration:"18 min",type:"video",done:false},{id:8,title:"A/B Testing",duration:"15 min",type:"video",done:false},
+      {id:9,title:"Go-to-Market Strategy",duration:"20 min",type:"video",done:false},{id:10,title:"PM Interviews",duration:"22 min",type:"video",done:false},
+      {id:11,title:"Building a PM Portfolio",duration:"18 min",type:"video",done:false},{id:12,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"PRD stands for?",opts:["Product Requirements Document","Project Review Draft","None","Product Release Date"],ans:0},{q:"OKR stands for?",opts:["Objectives and Key Results","Operational Key Review","None","Output Key Rating"],ans:0},{q:"What is product-market fit?",opts:["Product solves a real market need","Marketing strategy","Pricing model","None"],ans:0}]
+  },
+  // React Native
+  {id:28, title:"React Native Mobile Apps", category:"Mobile", lessons:14, hours:7, thumb:"📲", enrolled:false, progress:0, rating:4.6,
+    videoIds:["0-S5a0eXPoc","ur6I5m2nTvk","0-S5a0eXPoc","ur6I5m2nTvk","0-S5a0eXPoc","ur6I5m2nTvk","0-S5a0eXPoc","ur6I5m2nTvk","0-S5a0eXPoc","ur6I5m2nTvk","0-S5a0eXPoc","ur6I5m2nTvk","0-S5a0eXPoc","ur6I5m2nTvk"],
+    lessons_data:[
+      {id:1,title:"React Native Intro",duration:"12 min",type:"video",done:false},{id:2,title:"Setup & Expo",duration:"15 min",type:"video",done:false},
+      {id:3,title:"Core Components",duration:"20 min",type:"video",done:false},{id:4,title:"Styling with StyleSheet",duration:"18 min",type:"video",done:false},
+      {id:5,title:"Navigation",duration:"22 min",type:"video",done:false},{id:6,title:"Lists & FlatList",duration:"18 min",type:"video",done:false},
+      {id:7,title:"State Management",duration:"20 min",type:"video",done:false},{id:8,title:"Fetching APIs",duration:"18 min",type:"video",done:false},
+      {id:9,title:"Local Storage",duration:"15 min",type:"video",done:false},{id:10,title:"Camera & Media",duration:"18 min",type:"video",done:false},
+      {id:11,title:"Push Notifications",duration:"15 min",type:"video",done:false},{id:12,title:"Firebase Auth",duration:"20 min",type:"video",done:false},
+      {id:13,title:"Publishing App",duration:"18 min",type:"video",done:false},{id:14,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"React Native allows building?",opts:["Web apps","Cross-platform mobile apps","Desktop apps","None"],ans:1},{q:"Expo is?",opts:["Testing tool","Framework/toolchain for React Native","Database","None"],ans:1},{q:"StyleSheet.create is used for?",opts:["Creating components","Defining styles","API calls","None"],ans:1}]
+  },
+  // GraphQL
+  {id:29, title:"GraphQL & Apollo", category:"Web Dev", lessons:10, hours:5, thumb:"🕸️", enrolled:false, progress:0, rating:4.6,
+    videoIds:["ed8SykqOam8","YyUWW04HwKY","ed8SykqOam8","YyUWW04HwKY","ed8SykqOam8","YyUWW04HwKY","ed8SykqOam8","YyUWW04HwKY","ed8SykqOam8","YyUWW04HwKY"],
+    lessons_data:[
+      {id:1,title:"REST vs GraphQL",duration:"15 min",type:"video",done:false},{id:2,title:"GraphQL Basics",duration:"18 min",type:"video",done:false},
+      {id:3,title:"Queries & Mutations",duration:"20 min",type:"video",done:false},{id:4,title:"Schema Design",duration:"18 min",type:"video",done:false},
+      {id:5,title:"Resolvers",duration:"20 min",type:"video",done:false},{id:6,title:"Apollo Server",duration:"22 min",type:"video",done:false},
+      {id:7,title:"Apollo Client (React)",duration:"22 min",type:"video",done:false},{id:8,title:"Subscriptions",duration:"18 min",type:"video",done:false},
+      {id:9,title:"Authentication",duration:"20 min",type:"video",done:false},{id:10,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"GraphQL was created by?",opts:["Google","Meta (Facebook)","Amazon","Twitter"],ans:1},{q:"What is a resolver?",opts:["CSS tool","Function that returns data for a field","Auth middleware","None"],ans:1},{q:"GraphQL uses?",opts:["Multiple endpoints","Single endpoint","WebSockets","None"],ans:1}]
+  },
+  // Interview Prep
+  {id:30, title:"Tech Interview Preparation", category:"Career", lessons:14, hours:7, thumb:"🎯", enrolled:false, progress:0, rating:4.9,
+    videoIds:["1qw5ITr3k9E","Peql_29G3hs","1qw5ITr3k9E","Peql_29G3hs","1qw5ITr3k9E","Peql_29G3hs","1qw5ITr3k9E","Peql_29G3hs","1qw5ITr3k9E","Peql_29G3hs","1qw5ITr3k9E","Peql_29G3hs","1qw5ITr3k9E","Peql_29G3hs"],
+    lessons_data:[
+      {id:1,title:"How Tech Interviews Work",duration:"15 min",type:"video",done:false},{id:2,title:"Resume Tips for Tech",duration:"18 min",type:"video",done:false},
+      {id:3,title:"Coding Interview Patterns",duration:"25 min",type:"video",done:false},{id:4,title:"Array Problems",duration:"22 min",type:"video",done:false},
+      {id:5,title:"String Problems",duration:"20 min",type:"video",done:false},{id:6,title:"Linked List Problems",duration:"20 min",type:"video",done:false},
+      {id:7,title:"Tree Problems",duration:"22 min",type:"video",done:false},{id:8,title:"Dynamic Programming",duration:"28 min",type:"video",done:false},
+      {id:9,title:"System Design Interviews",duration:"25 min",type:"video",done:false},{id:10,title:"Behavioral Questions (STAR)",duration:"18 min",type:"video",done:false},
+      {id:11,title:"Salary Negotiation",duration:"15 min",type:"video",done:false},{id:12,title:"FAANG Company Culture",duration:"15 min",type:"video",done:false},
+      {id:13,title:"Mock Interview Walkthrough",duration:"30 min",type:"video",done:false},{id:14,title:"Final Quiz",duration:"15 min",type:"quiz",done:false}
+    ],
+    quiz:[{q:"STAR method is for?",opts:["Coding interviews","Behavioral question responses","Salary negotiation","None"],ans:1},{q:"What is a common greedy algorithm interview topic?",opts:["String reversal","Activity selection","Binary search","None"],ans:1},{q:"System design interviews test?",opts:["Speed coding","High-level architecture thinking","Math skills","None"],ans:1}]
+  },
+];
+
+const GRADS = {
+  "ML & AI":"linear-gradient(135deg,#354024,#889063)",
+  "Web Dev":"linear-gradient(135deg,#889063,#4C3D19)",
+  "Data Science":"linear-gradient(135deg,#4C3D19,#354024)",
+  "Engineering":"linear-gradient(135deg,#354024,#CFBB99)",
+  "Cloud":"linear-gradient(135deg,#889063,#354024)",
+  "Security":"linear-gradient(135deg,#4C3D19,#889063)",
+  "DevOps":"linear-gradient(135deg,#354024,#4C3D19)",
+  "Programming":"linear-gradient(135deg,#889063,#354024)",
+  "Mobile":"linear-gradient(135deg,#4C3D19,#CFBB99)",
+  "Design":"linear-gradient(135deg,#CFBB99,#354024)",
+  "Blockchain":"linear-gradient(135deg,#354024,#889063)",
+  "Productivity":"linear-gradient(135deg,#889063,#CFBB99)",
+  "Business":"linear-gradient(135deg,#4C3D19,#354024)",
+  "Career":"linear-gradient(135deg,#354024,#4C3D19)",
+};
+
+// ══ LANDING PAGE ══
+function Landing({onLogin}) {
+  const [mode, setMode] = useState(null);
+  const [isLogin, setIsLogin] = useState(true);
+  const [form, setForm] = useState({name:"",email:"",password:"",role:"Student",adminKey:""});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const roles = ["Student","Working Professional","Career Switcher","Fresher"];
+
+  const handleSubmit = async () => {
+    setLoading(true); setError("");
+    await new Promise(r=>setTimeout(r,800));
+    if(mode==="admin" && form.adminKey!=="admin123"){
+      setError("Invalid admin key. Use: admin123"); setLoading(false); return;
+    }
+    onLogin({...form, isAdmin: mode==="admin"});
+    setLoading(false);
+  };
+
+  return (
+    <div style={{minHeight:"100vh",background:C.b,position:"relative",overflow:"hidden"}}>
+      <style>{`
+        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-18px)}}
+        @keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+        @keyframes slideUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+        .blob{position:absolute;border-radius:50%;filter:blur(72px);opacity:0.3;pointer-events:none}
+        .inp{width:100%;background:#E5D7C4;border:2px solid #889063;border-radius:10px;padding:12px 15px;color:#354024;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:all .2s;box-sizing:border-box;font-weight:500}
+        .inp:focus{border-color:#354024;background:#CFBB99}
+        .inp::placeholder{color:#889063}
+        .mbtn{width:100%;padding:13px;border-radius:12px;border:none;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;background:#354024;color:#E5D7C4;box-shadow:0 6px 22px rgba(53,64,36,0.3);transition:all .3s}
+        .mbtn:hover{background:#4C3D19;transform:translateY(-2px)}
+        .mbtn:disabled{opacity:0.6;transform:none}
+        .fcard{background:rgba(53,64,36,0.07);border:1.5px solid rgba(53,64,36,0.13);border-radius:20px;padding:24px 20px;cursor:pointer;transition:all .28s}
+        .fcard:hover{transform:translateY(-7px);background:rgba(53,64,36,0.11);box-shadow:0 20px 50px rgba(53,64,36,0.14)}
+      `}</style>
+
+      <div className="blob" style={{width:500,height:500,background:"#889063",top:-150,right:-80,animation:"float 7s ease-in-out infinite"}}/>
+      <div className="blob" style={{width:400,height:400,background:"#354024",bottom:-100,left:-100,animation:"float 9s ease-in-out infinite",animationDelay:"2s"}}/>
+
+      <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"20px 48px",position:"relative",zIndex:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:38,height:38,borderRadius:10,background:C.k,display:"flex",alignItems:"center",justifyContent:"center",fontSize:19}}>🌿</div>
+          <span style={{fontFamily:"'Syne',sans-serif",fontSize:21,fontWeight:800,color:C.k}}>SkillPath<span style={{color:C.m}}>AI</span></span>
+        </div>
+        <div style={{display:"flex",gap:10}}>
+          <button onClick={()=>{setMode("user");setIsLogin(true);}} style={{background:"rgba(53,64,36,0.1)",border:"1.5px solid rgba(53,64,36,0.2)",borderRadius:10,padding:"9px 20px",color:C.k,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Sign in</button>
+          <button onClick={()=>setMode("admin")} style={{background:C.k,border:"none",borderRadius:10,padding:"9px 22px",color:C.b,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Admin →</button>
+        </div>
+      </nav>
+
+      {!mode ? (
+        <>
+          <div style={{textAlign:"center",padding:"48px 24px 32px",position:"relative",zIndex:5,animation:"slideUp .8s ease both"}}>
+            <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"rgba(53,64,36,0.08)",border:"1.5px solid rgba(53,64,36,0.16)",borderRadius:100,padding:"8px 22px",marginBottom:28}}>
+              <span style={{width:7,height:7,borderRadius:"50%",background:C.m,display:"inline-block"}}/>
+              <span style={{fontSize:13,color:C.k,fontWeight:600}}>100% Free · AI-Powered · Instant Certificates</span>
+            </div>
+            <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(34px,5vw,66px)",fontWeight:700,color:C.k,lineHeight:1.08,letterSpacing:"-1.5px",margin:"0 0 20px"}}>
+              Your AI-Powered<br/><span style={{color:C.m,fontStyle:"italic"}}>Career Growth Engine</span>
+            </h1>
+            <p style={{fontSize:16,color:C.d,maxWidth:500,margin:"0 auto 40px",lineHeight:1.75,fontWeight:400}}>Resume analysis · Career matching · Mock interviews · Salary insights · 30+ Free courses · Certificates</p>
+            <div style={{display:"flex",gap:13,justifyContent:"center",flexWrap:"wrap",marginBottom:56}}>
+              <button onClick={()=>{setMode("user");setIsLogin(false);}} style={{background:C.k,border:"none",borderRadius:14,padding:"15px 36px",color:C.b,fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",boxShadow:"0 8px 26px rgba(53,64,36,0.32)"}}>🌱 Start for free</button>
+              <button onClick={()=>{setMode("user");setIsLogin(true);}} style={{background:"rgba(53,64,36,0.09)",border:"2px solid #354024",borderRadius:14,padding:"15px 36px",color:C.k,fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Sign in</button>
+            </div>
+            <div style={{display:"flex",gap:44,justifyContent:"center",flexWrap:"wrap"}}>
+              {[["30+","Free Courses"],["10K+","Learners"],["4","AI Features"],["∞","Certificates"]].map(([v,l])=>(
+                <div key={l} style={{textAlign:"center"}}>
+                  <div style={{fontFamily:"'Playfair Display',serif",fontSize:30,fontWeight:700,color:C.k}}>{v}</div>
+                  <div style={{fontSize:12,color:C.m,marginTop:3,fontWeight:500}}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{overflow:"hidden",whiteSpace:"nowrap",padding:"12px 0",background:C.k,margin:"30px 0"}}>
+            <div style={{display:"inline-block",animation:"ticker 28s linear infinite"}}>
+              {["Resume AI","Career Matching","Mock Interviews","Salary Insights","AWS Readiness","30+ Free Courses","AI Certificates","Skill Gap Analysis",
+                "Resume AI","Career Matching","Mock Interviews","Salary Insights","AWS Readiness","30+ Free Courses","AI Certificates","Skill Gap Analysis"].map((t,i)=>(
+                <span key={i} style={{display:"inline-block",margin:"0 28px",fontSize:12,color:C.m,letterSpacing:"2px",textTransform:"uppercase",fontWeight:500}}>
+                  <span style={{color:C.t,marginRight:10}}>✦</span>{t}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div style={{padding:"10px 48px 64px",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:14,maxWidth:980,margin:"0 auto",width:"100%",boxSizing:"border-box"}}>
+            {[
+              {icon:"📄",title:"Resume AI",desc:"Upload resume PDF → career suggestions, AWS readiness check, ATS score, interview questions"},
+              {icon:"✦",title:"AI Career Advisor",desc:"Select skills → Claude AI gives personalized career roadmap and salary insights"},
+              {icon:"🎤",title:"Mock Interview",desc:"AI generates role-specific questions and scores your answers with feedback"},
+              {icon:"💰",title:"Salary Insights",desc:"Real AI salary data for any tech role, city and experience level in India"},
+            ].map(({icon,title,desc})=>(
+              <div key={title} className="fcard" onClick={()=>{setMode("user");setIsLogin(false);}}>
+                <div style={{fontSize:28,marginBottom:12}}>{icon}</div>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:700,color:C.k,marginBottom:7}}>{title}</div>
+                <div style={{fontSize:12,color:C.d,lineHeight:1.65,fontWeight:500}}>{desc}</div>
+                <div style={{width:28,height:3,borderRadius:2,background:C.m,marginTop:16}}/>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"20px 24px",minHeight:"72vh"}}>
+          <div style={{background:C.b,border:"2px solid rgba(53,64,36,0.14)",borderRadius:22,padding:"36px 32px",width:"100%",maxWidth:400,boxShadow:"0 22px 70px rgba(53,64,36,0.16)",animation:"pop .4s ease both"}}>
+            <button onClick={()=>{setMode(null);setError("");}} style={{background:"none",border:"none",color:C.m,cursor:"pointer",fontSize:13,fontFamily:"'DM Sans',sans-serif",marginBottom:20,fontWeight:600}}>← Back</button>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:22}}>
+              <div style={{width:42,height:42,borderRadius:11,background:mode==="admin"?C.d:C.k,display:"flex",alignItems:"center",justifyContent:"center",fontSize:19}}>{mode==="admin"?"🛡":"🌿"}</div>
+              <div>
+                <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,color:C.k}}>{mode==="admin"?"Admin Portal":isLogin?"Welcome back!":"Create account"}</div>
+                <div style={{fontSize:11,color:C.m,fontWeight:500}}>SkillPath AI Platform</div>
+              </div>
+            </div>
+            {mode==="user"&&(
+              <div style={{display:"flex",background:"rgba(53,64,36,0.07)",borderRadius:11,padding:4,marginBottom:20}}>
+                {["Sign in","Sign up"].map((t,i)=>(
+                  <button key={t} onClick={()=>{setIsLogin(i===0);setError("");}}
+                    style={{flex:1,padding:"8px",border:"none",borderRadius:9,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",background:(isLogin&&i===0)||(!isLogin&&i===1)?C.k:"transparent",color:(isLogin&&i===0)||(!isLogin&&i===1)?C.b:C.m,transition:"all .2s"}}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div style={{display:"flex",flexDirection:"column",gap:11}}>
+              {mode==="user"&&!isLogin&&<input className="inp" placeholder="Full name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>}
+              <input className="inp" placeholder="Email address" type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/>
+              <input className="inp" placeholder="Password" type="password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})}/>
+              {mode==="user"&&!isLogin&&(
+                <select className="inp" value={form.role} onChange={e=>setForm({...form,role:e.target.value})} style={{background:C.b}}>
+                  {roles.map(r=><option key={r}>{r}</option>)}
+                </select>
+              )}
+              {mode==="admin"&&<input className="inp" placeholder="Admin key (admin123)" type="password" value={form.adminKey} onChange={e=>setForm({...form,adminKey:e.target.value})}/>}
+              {error&&<div style={{fontSize:13,color:"#7f1d1d",background:"#fee2e2",border:"1px solid #fca5a5",borderRadius:8,padding:"10px 13px",fontWeight:500}}>{error}</div>}
+              <button className="mbtn" disabled={loading} onClick={handleSubmit}>
+                {loading?"Verifying...":mode==="admin"?"Access Admin →":isLogin?"Sign in →":"Create account →"}
+              </button>
+            </div>
+            <p style={{fontSize:12,color:C.m,textAlign:"center",marginTop:14,fontWeight:500}}>{mode==="admin"?"Demo key: admin123":"100% free. No credit card."}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══ AI ADVISOR ══
+function AIAdvisor() {
+  const SKILLS = ["Python","JavaScript","Java","C++","SQL","R","Machine Learning","Deep Learning","TensorFlow","PyTorch","React","Node.js","HTML/CSS","MongoDB","PostgreSQL","AWS","Azure","GCP","Docker","Kubernetes","Linux","Data Analysis","Pandas","NumPy","Tableau","Power BI","Cybersecurity","Networking","Git","REST APIs","System Design"];
+  const INTERESTS = ["Building AI/ML models","Web development","Data analysis","Cloud infrastructure","Security & hacking","Backend systems","Mobile apps","Research","DevOps","Freelancing","Game development","Blockchain","UI/UX Design"];
+  const EXPS = ["Fresher (0–1 yr)","Junior (1–3 yrs)","Mid-level (3–5 yrs)","Senior (5+ yrs)"];
+  const EDUS = ["12th / Diploma","B.Tech / B.E.","BCA / B.Sc CS","MCA / M.Tech","MBA / Other PG","Self-taught"];
+
+  const [step, setStep] = useState(1);
+  const [skills, setSkills] = useState([]);
+  const [interests, setInterests] = useState([]);
+  const [exp, setExp] = useState("");
+  const [edu, setEdu] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  const [chat, setChat] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+
+  const tog = (arr, setArr, v) => setArr(p => p.includes(v)?p.filter(x=>x!==v):[...p,v]);
+
+  const analyze = async () => {
+    setLoading(true); setError("");
+    try {
+      const text = await askClaude(`Expert AI career advisor India. Skills:${skills.join(",")}. Interests:${interests.join(",")}. Exp:${exp}. Edu:${edu}. JSON only: {"top_career":"Title","match_score":85,"why":"2 sentences","salary_range":"₹X–Y LPA","time_to_job":"X months","alternative_careers":[{"title":"C","match":75,"reason":"why"},{"title":"C","match":65,"reason":"why"},{"title":"C","match":55,"reason":"why"}],"skill_gaps":["s1","s2","s3","s4"],"recommended_courses":[{"name":"C","platform":"P","duration":"X wks","priority":"High"},{"name":"C","platform":"P","duration":"X wks","priority":"Medium"},{"name":"C","platform":"P","duration":"X wks","priority":"Medium"}],"action_plan":["Month 1: act","Month 2: act","Month 3: act"],"job_titles":["T1","T2","T3"]}`);
+      setResult(parseJSON(text));
+      setChat([{role:"ai",text:`Profile analyzed! You're a strong fit for **${parseJSON(text).top_career}**. Ask me anything!`}]);
+      setStep(4);
+    } catch(e){ setError(e.message==="NO_KEY"?"🔑 Please enter your Anthropic API key in the banner above first.":"Analysis failed: "+e.message); }
+    setLoading(false);
+  };
+
+  const sendChat = async () => {
+    if(!chatInput.trim()||chatLoading) return;
+    const msg=chatInput.trim(); setChatInput(""); setChatLoading(true);
+    setChat(c=>[...c,{role:"user",text:msg}]);
+    try {
+      const text = await askClaude(`Career advisor. Skills:${skills.join(",")}. Career:${result?.top_career}. Q:${msg}. Answer 3-4 sentences, Indian market.`, 400);
+      setChat(c=>[...c,{role:"ai",text}]);
+    } catch(e){ setChat(c=>[...c,{role:"ai",text:e.message==="NO_KEY"?"🔑 Please enter your Anthropic API key in the banner above.":"Connection error. Try again."}]); }
+    setChatLoading(false);
+  };
+
+  const Chip = ({label, selected, onClick}) => (
+    <button onClick={onClick} style={{padding:"7px 15px",borderRadius:20,fontSize:12,cursor:"pointer",border:`1.5px solid ${selected?"#354024":"rgba(53,64,36,0.2)"}`,background:selected?"#354024":"#CFBB99",color:selected?"#E5D7C4":"#889063",fontFamily:"'DM Sans',sans-serif",fontWeight:selected?700:500,transition:"all .2s"}}>{label}</button>
+  );
+
+  return (
+    <div>
+      {step<4&&(
+        <div style={{display:"flex",alignItems:"center",gap:0,marginBottom:24}}>
+          {[1,2,3].map((s,i)=>(
+            <React.Fragment key={s}>
+              <div style={{width:30,height:30,borderRadius:"50%",background:step>=s?C.k:"rgba(53,64,36,0.1)",color:step>=s?C.b:C.m,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,flexShrink:0,transition:"all .3s"}}>{step>s?"✓":s}</div>
+              {i<2&&<div style={{flex:1,height:2,background:step>s?C.m:"rgba(53,64,36,0.12)"}}/>}
+            </React.Fragment>
+          ))}
+        </div>
+      )}
+
+      {step===1&&<div>
+        <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,color:C.k,marginBottom:5}}>Your Skills 🛠</div>
+        <div style={{fontSize:13,color:C.m,marginBottom:14,fontWeight:500}}>Select all you know</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:18}}>{SKILLS.map(s=><Chip key={s} label={s} selected={skills.includes(s)} onClick={()=>tog(skills,setSkills,s)}/>)}</div>
+        <button disabled={!skills.length} onClick={()=>setStep(2)} style={{background:skills.length?C.k:"rgba(53,64,36,0.1)",border:"none",borderRadius:11,padding:"11px 24px",color:skills.length?C.b:C.m,fontSize:14,fontWeight:700,cursor:skills.length?"pointer":"not-allowed",fontFamily:"'DM Sans',sans-serif"}}>Next →</button>
+      </div>}
+
+      {step===2&&<div>
+        <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,color:C.k,marginBottom:5}}>Interests 🎯</div>
+        <div style={{fontSize:13,color:C.m,marginBottom:14,fontWeight:500}}>What excites you?</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:18}}>{INTERESTS.map(i=><Chip key={i} label={i} selected={interests.includes(i)} onClick={()=>tog(interests,setInterests,i)}/>)}</div>
+        <div style={{display:"flex",gap:10}}>
+          <button onClick={()=>setStep(1)} style={{background:C.t,border:`1.5px solid rgba(53,64,36,0.2)`,borderRadius:11,padding:"11px 20px",color:C.k,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>← Back</button>
+          <button disabled={!interests.length} onClick={()=>setStep(3)} style={{background:interests.length?C.k:"rgba(53,64,36,0.1)",border:"none",borderRadius:11,padding:"11px 24px",color:interests.length?C.b:C.m,fontSize:14,fontWeight:700,cursor:interests.length?"pointer":"not-allowed",fontFamily:"'DM Sans',sans-serif"}}>Next →</button>
+        </div>
+      </div>}
+
+      {step===3&&<div>
+        <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,color:C.k,marginBottom:5}}>Background 🎓</div>
+        <div style={{marginBottom:16}}><div style={{fontSize:13,fontWeight:700,color:C.k,marginBottom:9}}>Experience</div><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{EXPS.map(e=><Chip key={e} label={e} selected={exp===e} onClick={()=>setExp(e)}/>)}</div></div>
+        <div style={{marginBottom:22}}><div style={{fontSize:13,fontWeight:700,color:C.k,marginBottom:9}}>Education</div><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{EDUS.map(e=><Chip key={e} label={e} selected={edu===e} onClick={()=>setEdu(e)}/>)}</div></div>
+        {error&&<div style={{background:"#fee2e2",border:"1px solid #fca5a5",borderRadius:10,padding:"11px",color:"#7f1d1d",fontSize:13,marginBottom:12,fontWeight:500}}>{error}</div>}
+        <div style={{display:"flex",gap:10}}>
+          <button onClick={()=>setStep(2)} style={{background:C.t,border:`1.5px solid rgba(53,64,36,0.2)`,borderRadius:11,padding:"11px 20px",color:C.k,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>← Back</button>
+          <button disabled={loading||!exp||!edu} onClick={analyze} style={{background:(!exp||!edu)?"rgba(53,64,36,0.1)":"linear-gradient(135deg,#354024,#889063)",border:"none",borderRadius:11,padding:"11px 26px",color:(!exp||!edu)?C.m:C.b,fontSize:14,fontWeight:700,cursor:(!exp||!edu)||loading?"not-allowed":"pointer",fontFamily:"'DM Sans',sans-serif"}}>
+            {loading?"⏳ Analyzing...":"✦ Get Career Report"}
+          </button>
+        </div>
+      </div>}
+
+      {step===4&&result&&<div>
+        <div style={{background:"linear-gradient(135deg,#354024,#889063)",borderRadius:18,padding:"22px 24px",marginBottom:16,boxShadow:"0 8px 28px rgba(53,64,36,0.28)"}}>
+          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:10,letterSpacing:"2px",color:"rgba(229,215,196,0.7)",textTransform:"uppercase",fontWeight:600,marginBottom:5}}>Best Career Match</div>
+              <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:C.b,marginBottom:6}}>{result.top_career}</div>
+              <div style={{fontSize:13,color:C.t,lineHeight:1.6,maxWidth:380,fontWeight:500}}>{result.why}</div>
+            </div>
+            <div style={{textAlign:"center",minWidth:70}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:42,fontWeight:800,color:C.b,lineHeight:1}}>{result.match_score}%</div>
+              <div style={{fontSize:10,color:C.t,fontWeight:600}}>AI MATCH</div>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:10,marginTop:14,flexWrap:"wrap"}}>
+            <div style={{background:"rgba(229,215,196,0.1)",borderRadius:10,padding:"9px 14px",flex:1,minWidth:110}}><div style={{fontSize:10,color:C.t,marginBottom:2,fontWeight:500}}>💰 Salary</div><div style={{fontSize:14,fontWeight:700,color:C.b}}>{result.salary_range}</div></div>
+            <div style={{background:"rgba(229,215,196,0.1)",borderRadius:10,padding:"9px 14px",flex:1,minWidth:110}}><div style={{fontSize:10,color:C.t,marginBottom:2,fontWeight:500}}>⏱ Timeline</div><div style={{fontSize:14,fontWeight:700,color:C.b}}>{result.time_to_job}</div></div>
+            <div style={{background:"rgba(229,215,196,0.1)",borderRadius:10,padding:"9px 14px",flex:2,minWidth:180}}><div style={{fontSize:10,color:C.t,marginBottom:4,fontWeight:500}}>🎯 Target roles</div><div style={{display:"flex",flexWrap:"wrap",gap:5}}>{result.job_titles?.map(t=><span key={t} style={{background:"rgba(229,215,196,0.15)",borderRadius:20,padding:"2px 9px",fontSize:10,color:C.b,fontWeight:500}}>{t}</span>)}</div></div>
+          </div>
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+          <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:14,padding:"16px"}}>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:C.k,marginBottom:11}}>Alternative Careers 🔀</div>
+            {result.alternative_careers?.map(c=>(
+              <div key={c.title} style={{display:"flex",gap:10,marginBottom:10,paddingBottom:10,borderBottom:"1px solid rgba(53,64,36,0.08)",alignItems:"center"}}>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800,color:C.k,minWidth:40,textAlign:"center"}}>{c.match}%</div>
+                <div><div style={{fontSize:12,fontWeight:700,color:C.k}}>{c.title}</div><div style={{fontSize:11,color:C.m,lineHeight:1.4,fontWeight:500}}>{c.reason}</div></div>
+              </div>
+            ))}
+          </div>
+          <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:14,padding:"16px"}}>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:C.k,marginBottom:11}}>Skills to Learn 📈</div>
+            {result.skill_gaps?.map((s,i)=>(
+              <div key={s} style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                <div style={{width:20,height:20,borderRadius:"50%",background:"rgba(53,64,36,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:C.m,flexShrink:0}}>{i+1}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12,color:C.k,fontWeight:600,marginBottom:3}}>{s}</div>
+                  <div style={{background:"rgba(53,64,36,0.08)",borderRadius:3,height:4}}><div style={{width:`${85-i*15}%`,height:4,borderRadius:3,background:`linear-gradient(90deg,${C.k},${C.m})`}}/></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+          <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:14,padding:"16px"}}>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:C.k,marginBottom:11}}>Recommended Courses 🎓</div>
+            {result.recommended_courses?.map(c=>(
+              <div key={c.name} style={{marginBottom:11,paddingBottom:11,borderBottom:"1px solid rgba(53,64,36,0.08)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+                  <div style={{fontSize:12,fontWeight:700,color:C.k}}>{c.name}</div>
+                  <span style={{background:c.priority==="High"?C.k:C.m,borderRadius:20,padding:"2px 8px",fontSize:9,color:C.b,fontWeight:700}}>{c.priority}</span>
+                </div>
+                <div style={{fontSize:11,color:C.m,fontWeight:500}}>{c.platform} · {c.duration}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:14,padding:"16px"}}>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:C.k,marginBottom:11}}>3-Month Plan 🗓</div>
+            {result.action_plan?.map((a,i)=>(
+              <div key={i} style={{display:"flex",gap:9,marginBottom:11,paddingBottom:11,borderBottom:"1px solid rgba(53,64,36,0.08)"}}>
+                <div style={{width:22,height:22,borderRadius:"50%",background:`linear-gradient(135deg,${C.k},${C.m})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:C.b,flexShrink:0}}>{i+1}</div>
+                <div style={{fontSize:12,color:C.k,lineHeight:1.5,fontWeight:500}}>{a}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.15)",borderRadius:14,padding:"16px"}}>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:C.k,marginBottom:11}}>✦ Ask AI Advisor <span style={{fontSize:11,color:C.m,fontWeight:500}}>· Claude AI</span></div>
+          <div style={{maxHeight:220,overflowY:"auto",display:"flex",flexDirection:"column",gap:9,padding:"12px",background:C.b,borderRadius:12,border:"1.5px solid rgba(53,64,36,0.1)",marginBottom:9}}>
+            {chat.map((m,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+                <div style={{maxWidth:"80%",background:m.role==="user"?C.k:C.b,border:m.role==="ai"?"1px solid rgba(53,64,36,0.12)":"none",borderRadius:m.role==="user"?"13px 13px 4px 13px":"13px 13px 13px 4px",padding:"10px 14px",fontSize:13,color:m.role==="user"?C.b:C.k,lineHeight:1.6,fontWeight:500}}>
+                  {m.role==="ai"&&<div style={{fontSize:9,color:C.m,marginBottom:3,fontWeight:700,textTransform:"uppercase"}}>SkillPath AI</div>}
+                  {m.text}
+                </div>
+              </div>
+            ))}
+            {chatLoading&&<div style={{display:"flex"}}><div style={{background:C.b,border:"1px solid rgba(53,64,36,0.12)",borderRadius:"13px 13px 13px 4px",padding:"10px 14px",fontSize:13,color:C.m}}>Thinking...</div></div>}
+          </div>
+          <div style={{display:"flex",gap:9,marginBottom:9}}>
+            <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendChat()} placeholder="Ask about salary, skills, interviews..." style={{flex:1,background:C.b,border:"2px solid rgba(53,64,36,0.2)",borderRadius:11,padding:"10px 14px",color:C.k,fontSize:13,outline:"none",fontFamily:"'DM Sans',sans-serif"}}/>
+            <button onClick={sendChat} disabled={chatLoading} style={{background:C.k,border:"none",borderRadius:11,padding:"10px 16px",color:C.b,fontSize:16,cursor:"pointer"}}>→</button>
+          </div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {["First job tips?","Expected salary?","Portfolio ideas?","Companies hiring?"].map(q=>(
+              <button key={q} onClick={()=>setChatInput(q)} style={{background:"rgba(53,64,36,0.08)",border:"1.5px solid rgba(53,64,36,0.14)",borderRadius:20,padding:"4px 12px",color:C.k,fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>{q}</button>
+            ))}
+          </div>
+        </div>
+        <button onClick={()=>{setStep(1);setResult(null);setSkills([]);setInterests([]);setExp("");setEdu("");setChat([]);}} style={{marginTop:12,background:"rgba(53,64,36,0.08)",border:"1.5px solid rgba(53,64,36,0.2)",borderRadius:11,padding:"10px 20px",color:C.k,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600}}>↺ Start over</button>
+      </div>}
+    </div>
+  );
+}
+
+// ══ RESUME ANALYZER — File Upload version ══
+function ResumeAnalyzer() {
+  const [resumeText, setResumeText] = useState("");
+  const [fileName, setFileName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [activeCheck, setActiveCheck] = useState(null);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  const [showPaste, setShowPaste] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const fileRef = useRef();
+
+  const handleFile = async (file) => {
+    if(!file) return;
+    const isAllowed = file.name.endsWith(".txt") || file.name.endsWith(".docx") || file.name.endsWith(".pdf") || file.type==="text/plain" || file.type==="application/pdf" || file.type.includes("wordprocessingml");
+    if(!isAllowed){ setError("Please upload a PDF, DOCX, or TXT file."); return; }
+    setExtracting(true); setError(""); setFileName(file.name); setResult(null); setActiveCheck(null); setShowPaste(false);
+    try {
+      const text = await extractTextFromFile(file);
+      const cleaned = (text||"").replace(/\s+/g," ").trim();
+      if(cleaned.length < 80) {
+        // Show paste fallback instead of hard error
+        setShowPaste(true);
+        setError("");
+        setResumeText("");
+      } else {
+        setResumeText(cleaned);
+        setError("");
+      }
+    } catch(e){
+      setShowPaste(true);
+      setError("");
+    }
+    setExtracting(false);
+  };
+
+  const analyze = async (type) => {
+    if(!resumeText.trim()){setError("Please upload your resume first.");return;}
+    setLoading(true); setActiveCheck(type); setError(""); setResult(null);
+    try {
+      let prompt = "";
+      if(type==="career") prompt = `Analyze this resume and suggest careers. Resume: ${resumeText.substring(0,2500)}. JSON only: {"name":"Name","current_level":"Fresher/Junior/Mid/Senior","top_skills":["s1","s2","s3","s4","s5"],"career_matches":[{"career":"C","match_score":90,"reason":"why","salary":"₹X–Y LPA","demand":"High"},{"career":"C","match_score":80,"reason":"why","salary":"₹X–Y LPA","demand":"High"},{"career":"C","match_score":70,"reason":"why","salary":"₹X–Y LPA","demand":"Medium"},{"career":"C","match_score":60,"reason":"why","salary":"₹X–Y LPA","demand":"Medium"}],"skill_gaps":["g1","g2","g3"],"immediate_actions":["a1","a2","a3"]}`;
+      else if(type==="aws") prompt = `Check AWS readiness of this resume. Resume: ${resumeText.substring(0,2500)}. JSON only: {"aws_score":65,"aws_ready":false,"current_aws_skills":["s1","s2"],"missing_aws_skills":["m1","m2","m3"],"recommended_certification":"AWS Solutions Architect","cert_path":["Cloud Practitioner","Solutions Architect Associate","Solutions Architect Professional"],"study_time":"3–4 months","verdict":"One sentence verdict","job_roles":["Role1","Role2"]}`;
+      else if(type==="rate") prompt = `Rate this resume professionally. Resume: ${resumeText.substring(0,2500)}. JSON only: {"overall_score":75,"grade":"B","sections":{"format":80,"content":75,"keywords":70,"impact":72,"ats_score":68},"strengths":["s1","s2","s3"],"improvements":["i1","i2","i3"],"ats_issues":["a1","a2"],"power_words_missing":["w1","w2","w3"],"quick_wins":["q1","q2","q3"],"summary":"2 sentence honest assessment"}`;
+      else if(type==="interview") prompt = `Generate interview questions from this resume. Resume: ${resumeText.substring(0,2500)}. JSON only: {"technical_questions":["Q1","Q2","Q3","Q4","Q5"],"behavioral_questions":["Q1","Q2","Q3"],"project_questions":["Q1","Q2"],"tricky_questions":["Q1","Q2"],"preparation_tips":["t1","t2","t3"],"likely_role":"Role","difficulty":"Medium"}`;
+      const text = await askClaude(prompt, 1000);
+      setResult({type, data: parseJSON(text)});
+    } catch(e){ setError(e.message==="NO_KEY"?"🔑 Please enter your Anthropic API key in the yellow banner above to use AI features.":"Failed: "+e.message); }
+    setLoading(false);
+  };
+
+  const sc = s => s>=80?C.k:s>=60?C.m:"#7f1d1d";
+
+  return (
+    <div>
+      {/* File Upload Zone */}
+      <div
+        onClick={()=>!extracting&&fileRef.current.click()}
+        onDragOver={e=>e.preventDefault()}
+        onDrop={e=>{e.preventDefault();handleFile(e.dataTransfer.files[0]);}}
+        style={{border:`2px dashed ${resumeText?"#889063":"rgba(53,64,36,0.3)"}`,borderRadius:14,padding:"28px",textAlign:"center",cursor:extracting?"wait":"pointer",background:resumeText?"rgba(136,144,99,0.08)":C.t,transition:"all .2s",marginBottom:14}}
+      >
+        <input ref={fileRef} type="file" accept=".pdf,.docx,.txt" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])}/>
+        {extracting ? (
+          <div>
+            <div style={{fontSize:32,marginBottom:8}}>⏳</div>
+            <div style={{fontSize:14,fontWeight:700,color:C.k}}>Extracting text from resume...</div>
+          </div>
+        ) : resumeText ? (
+          <div>
+            <div style={{fontSize:32,marginBottom:8}}>✅</div>
+            <div style={{fontSize:14,fontWeight:700,color:C.k,marginBottom:3}}>Resume loaded: {fileName}</div>
+            <div style={{fontSize:12,color:C.m}}>{resumeText.trim().split(/\s+/).length} words extracted · Click to change file</div>
+          </div>
+        ) : (
+          <div>
+            <div style={{fontSize:40,marginBottom:10}}>📂</div>
+            <div style={{fontSize:15,fontWeight:700,color:C.k,marginBottom:5}}>Upload your Resume</div>
+            <div style={{fontSize:13,color:C.m,marginBottom:8}}>Drag & drop or click to browse</div>
+            <div style={{display:"inline-flex",gap:8,flexWrap:"wrap",justifyContent:"center"}}>
+              {["PDF","DOCX","TXT"].map(f=>(
+                <span key={f} style={{background:"rgba(53,64,36,0.1)",borderRadius:20,padding:"3px 11px",fontSize:11,color:C.k,fontWeight:700}}>{f}</span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {error&&<div style={{background:"#fee2e2",border:"1px solid #fca5a5",borderRadius:10,padding:"11px",color:"#7f1d1d",fontSize:13,marginBottom:12,fontWeight:500}}>{error}</div>}
+
+      {/* Paste fallback when PDF extraction fails */}
+      {showPaste&&(
+        <div style={{background:"#fffbeb",border:"2px solid #889063",borderRadius:13,padding:"16px",marginBottom:14}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+            <span style={{fontSize:18}}>📋</span>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:"#354024"}}>Could not auto-read this PDF</div>
+          </div>
+          <div style={{fontSize:12,color:"#4C3D19",marginBottom:10,lineHeight:1.6,fontWeight:500}}>
+            Some PDFs are image-based (scanned) and can't be read automatically.<br/>
+            <b>Fix:</b> Open your resume, Select All (Ctrl+A), Copy (Ctrl+C), then paste below:
+          </div>
+          <textarea
+            value={pasteText}
+            onChange={e=>setPasteText(e.target.value)}
+            placeholder="Paste your resume text here... (Ctrl+A then Ctrl+C from your PDF/Word doc)"
+            style={{width:"100%",minHeight:130,background:"#fff",border:"2px solid rgba(53,64,36,0.22)",borderRadius:10,padding:"11px 13px",color:"#354024",fontSize:12,fontFamily:"'DM Sans',sans-serif",outline:"none",resize:"vertical",boxSizing:"border-box",lineHeight:1.6,fontWeight:500}}
+          />
+          <div style={{display:"flex",gap:9,marginTop:10}}>
+            <button
+              onClick={()=>{const t=pasteText.trim();if(t.length<80){setError("Please paste more text — at least a few lines of your resume.");return;}setResumeText(t);setShowPaste(false);setError("");}}
+              style={{background:"#354024",border:"none",borderRadius:9,padding:"9px 20px",color:"#E5D7C4",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}
+            >Use this text ✓</button>
+            <button
+              onClick={()=>{setShowPaste(false);setPasteText("");setFileName("");}}
+              style={{background:"rgba(53,64,36,0.08)",border:"1.5px solid rgba(53,64,36,0.2)",borderRadius:9,padding:"9px 16px",color:"#889063",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}
+            >Cancel</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:18}}>
+        {[{id:"career",icon:"🎯",label:"Suggest Careers",desc:"AI matches resume to careers"},{id:"aws",icon:"☁️",label:"AWS Readiness",desc:"Check AWS friendliness"},{id:"rate",icon:"⭐",label:"Rate My Resume",desc:"Score + ATS + tips"},{id:"interview",icon:"🎤",label:"Interview Prep",desc:"AI generates questions"}].map(btn=>(
+          <button key={btn.id} onClick={()=>analyze(btn.id)} disabled={loading||!resumeText} style={{background:activeCheck===btn.id&&result?`linear-gradient(135deg,${C.k},${C.m})`:C.t,border:`1.5px solid ${activeCheck===btn.id&&result?C.k:"rgba(53,64,36,0.2)"}`,borderRadius:13,padding:"14px 12px",cursor:loading||!resumeText?"not-allowed":"pointer",textAlign:"left",transition:"all .2s",opacity:(loading&&activeCheck!==btn.id)||!resumeText?0.5:1}}>
+            <div style={{fontSize:20,marginBottom:5}}>{btn.icon}</div>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,color:activeCheck===btn.id&&result?C.b:C.k}}>{btn.label}</div>
+            <div style={{fontSize:11,color:activeCheck===btn.id&&result?"rgba(229,215,196,0.7)":C.m,marginTop:2,fontWeight:500}}>{btn.desc}</div>
+          </button>
+        ))}
+      </div>
+      {loading&&<div style={{textAlign:"center",padding:"24px",background:C.t,borderRadius:14,marginBottom:16}}><div style={{fontSize:28,marginBottom:8}}>⏳</div><div style={{fontFamily:"'Playfair Display',serif",fontSize:15,fontWeight:700,color:C.k}}>Claude AI is analyzing your resume...</div><div style={{fontSize:12,color:C.m,marginTop:4,fontWeight:500}}>This takes 10–20 seconds</div></div>}
+      {!loading&&result&&(
+        <div>
+          {result.type==="career"&&<div>
+            <div style={{background:`linear-gradient(135deg,${C.k},${C.m})`,borderRadius:16,padding:"20px 22px",marginBottom:14}}>
+              <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,color:C.b,marginBottom:6}}>{result.data.name} — {result.data.current_level}</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:5}}>{result.data.top_skills?.map(s=><span key={s} style={{background:"rgba(229,215,196,0.15)",borderRadius:20,padding:"3px 11px",fontSize:11,color:C.b,fontWeight:500}}>{s}</span>)}</div>
+            </div>
+            {result.data.career_matches?.map((c,i)=>(
+              <div key={c.career} style={{background:C.t,border:`1.5px solid rgba(53,64,36,${i===0?0.25:0.12})`,borderRadius:13,padding:"14px 16px",marginBottom:10,display:"flex",gap:13,alignItems:"center"}}>
+                <div style={{textAlign:"center",minWidth:52}}><div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800,color:sc(c.match_score)}}>{c.match_score}%</div>{i===0&&<div style={{fontSize:9,color:C.m,fontWeight:700}}>TOP</div>}</div>
+                <div style={{flex:1}}>
+                  <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:2}}><div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:C.k}}>{c.career}</div><span style={{background:"rgba(53,64,36,0.1)",borderRadius:20,padding:"1px 8px",fontSize:10,color:C.k,fontWeight:700}}>{c.demand}</span></div>
+                  <div style={{fontSize:12,color:C.d,lineHeight:1.5,fontWeight:500,marginBottom:3}}>{c.reason}</div>
+                  <div style={{fontSize:12,color:C.m,fontWeight:600}}>💰 {c.salary}</div>
+                </div>
+              </div>
+            ))}
+          </div>}
+          {result.type==="aws"&&<div>
+            <div style={{background:"linear-gradient(135deg,#354024,#232f3e)",borderRadius:16,padding:"20px 22px",marginBottom:14}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+                <div>
+                  <div style={{fontFamily:"'Playfair Display',serif",fontSize:19,fontWeight:700,color:C.b,marginBottom:4}}>{result.data.recommended_certification}</div>
+                  <div style={{fontSize:13,color:C.t,fontWeight:500}}>{result.data.verdict}</div>
+                  <div style={{fontSize:12,color:C.t,marginTop:6,fontWeight:500}}>Study time: {result.data.study_time}</div>
+                </div>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:44,fontWeight:800,color:C.b,lineHeight:1}}>{result.data.aws_score}</div>
+                  <div style={{fontSize:10,color:C.t,fontWeight:600}}>/100 AWS SCORE</div>
+                  <div style={{fontSize:11,color:result.data.aws_ready?"#86efac":"#fca5a5",marginTop:4,fontWeight:700}}>{result.data.aws_ready?"✅ Ready":"⚠️ Not Yet"}</div>
+                </div>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+              <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:13,padding:"14px"}}>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,color:C.k,marginBottom:10}}>✅ AWS Skills You Have</div>
+                {result.data.current_aws_skills?.length?result.data.current_aws_skills.map(s=><div key={s} style={{display:"flex",alignItems:"center",gap:7,marginBottom:7}}><span style={{color:C.m}}>✓</span><span style={{fontSize:12,color:C.k,fontWeight:500}}>{s}</span></div>):<div style={{fontSize:12,color:C.m}}>None detected</div>}
+              </div>
+              <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:13,padding:"14px"}}>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,color:C.k,marginBottom:10}}>📚 Skills to Learn</div>
+                {result.data.missing_aws_skills?.map((s,i)=><div key={s} style={{display:"flex",alignItems:"center",gap:7,marginBottom:7}}><span style={{width:16,height:16,borderRadius:"50%",background:"rgba(53,64,36,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:C.m,flexShrink:0}}>{i+1}</span><span style={{fontSize:12,color:C.k,fontWeight:500}}>{s}</span></div>)}
+              </div>
+            </div>
+            <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:13,padding:"14px"}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,color:C.k,marginBottom:10}}>🗺 Cert Path</div>
+              <div style={{display:"flex",alignItems:"center",gap:0,flexWrap:"wrap"}}>
+                {result.data.cert_path?.map((cert,i)=>(
+                  <React.Fragment key={cert}>
+                    <div style={{background:i===0?`linear-gradient(135deg,${C.k},${C.m})`:"rgba(53,64,36,0.08)",border:`1.5px solid ${i===0?C.k:"rgba(53,64,36,0.15)"}`,borderRadius:9,padding:"7px 13px",fontSize:11,fontWeight:700,color:i===0?C.b:C.k}}>{cert}</div>
+                    {i<result.data.cert_path.length-1&&<div style={{fontSize:14,color:C.m,margin:"0 5px"}}>→</div>}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          </div>}
+          {result.type==="rate"&&<div>
+            <div style={{background:`linear-gradient(135deg,${C.k},${C.m})`,borderRadius:16,padding:"20px 22px",marginBottom:14}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+                <div>
+                  <div style={{fontFamily:"'Playfair Display',serif",fontSize:34,fontWeight:700,color:C.b,lineHeight:1}}>{result.data.overall_score}<span style={{fontSize:16}}>/100</span></div>
+                  <div style={{display:"inline-block",background:"rgba(229,215,196,0.15)",borderRadius:20,padding:"3px 14px",fontSize:15,fontWeight:800,color:C.b,marginTop:5}}>{result.data.grade}</div>
+                </div>
+                <div style={{fontSize:13,color:C.t,lineHeight:1.6,maxWidth:300,fontWeight:500}}>{result.data.summary}</div>
+              </div>
+            </div>
+            <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:13,padding:"16px",marginBottom:12}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,color:C.k,marginBottom:12}}>Detailed Scores</div>
+              {Object.entries(result.data.sections||{}).map(([key,val])=>(
+                <div key={key} style={{marginBottom:11}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:12,color:C.k,fontWeight:600,textTransform:"capitalize"}}>{key.replace(/_/g," ")}</span><span style={{fontSize:11,color:sc(val),fontWeight:700}}>{val}/100</span></div>
+                  <div style={{background:"rgba(53,64,36,0.1)",borderRadius:4,height:6}}><div style={{width:`${val}%`,height:6,borderRadius:4,background:val>=80?`linear-gradient(90deg,${C.k},${C.m})`:val>=60?`linear-gradient(90deg,${C.m},${C.t})`:"linear-gradient(90deg,#7f1d1d,#ef4444)"}}/></div>
+                </div>
+              ))}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:13,padding:"14px"}}>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,color:C.k,marginBottom:9}}>✅ Strengths</div>
+                {result.data.strengths?.map((s,i)=><div key={i} style={{display:"flex",gap:6,marginBottom:7,alignItems:"flex-start"}}><span style={{color:C.m,flexShrink:0}}>✓</span><span style={{fontSize:12,color:C.d,lineHeight:1.5,fontWeight:500}}>{s}</span></div>)}
+              </div>
+              <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:13,padding:"14px"}}>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,color:C.k,marginBottom:9}}>⚡ Quick Wins</div>
+                {result.data.quick_wins?.map((w,i)=><div key={i} style={{display:"flex",gap:6,marginBottom:7,alignItems:"flex-start"}}><span style={{color:C.m,flexShrink:0}}>→</span><span style={{fontSize:12,color:C.d,lineHeight:1.5,fontWeight:500}}>{w}</span></div>)}
+              </div>
+            </div>
+          </div>}
+          {result.type==="interview"&&<div>
+            <div style={{background:`linear-gradient(135deg,${C.k},${C.m})`,borderRadius:16,padding:"18px 22px",marginBottom:14}}>
+              <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,color:C.b,marginBottom:4}}>Target: {result.data.likely_role}</div>
+              <span style={{background:"rgba(229,215,196,0.15)",borderRadius:20,padding:"3px 13px",fontSize:12,color:C.b,fontWeight:600}}>Difficulty: {result.data.difficulty}</span>
+            </div>
+            {[["💻 Technical","technical_questions"],["🤝 Behavioral","behavioral_questions"],["📁 Project","project_questions"],["🧠 Tricky","tricky_questions"]].map(([label,key])=>(
+              <div key={key} style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:13,padding:"14px",marginBottom:11}}>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,color:C.k,marginBottom:9}}>{label}</div>
+                {result.data[key]?.map((q,i)=>(
+                  <div key={i} style={{display:"flex",gap:9,marginBottom:8,padding:"9px 11px",background:"rgba(53,64,36,0.04)",borderRadius:9,borderLeft:`3px solid ${C.m}`}}>
+                    <span style={{fontSize:11,fontWeight:700,color:C.m,flexShrink:0}}>Q{i+1}</span>
+                    <span style={{fontSize:12,color:C.k,lineHeight:1.55,fontWeight:500}}>{q}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══ FEEDBACK ══
+function Feedback() {
+  const [rating, setRating] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [category, setCategory] = useState("");
+  const [message, setMessage] = useState("");
+  const [name, setName] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [feedbacks, setFeedbacks] = useState([
+    {name:"Priya S.",rating:5,category:"AI Advisor",message:"Career recommendation was spot on! Helped me choose between ML and Data Engineering.",date:"2 days ago"},
+    {name:"Rahul V.",rating:4,category:"Resume Analyzer",message:"AWS readiness check was very detailed. Found gaps I didn't know I had.",date:"5 days ago"},
+    {name:"Ananya K.",rating:5,category:"Courses",message:"Videos play directly in the site now. Great quality content throughout!",date:"1 week ago"},
+  ]);
+
+  if(submitted) return (
+    <div style={{textAlign:"center",padding:"48px 24px"}}>
+      <div style={{fontSize:50,marginBottom:14}}>🙏</div>
+      <div style={{fontFamily:"'Playfair Display',serif",fontSize:21,fontWeight:700,color:C.k,marginBottom:7}}>Thank you!</div>
+      <div style={{fontSize:14,color:C.m,marginBottom:22,fontWeight:500}}>Your feedback helps us improve SkillPath AI.</div>
+      <button onClick={()=>setSubmitted(false)} style={{background:C.k,border:"none",borderRadius:11,padding:"11px 24px",color:C.b,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Give more feedback</button>
+    </div>
+  );
+
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18}}>
+      <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:18,padding:"22px"}}>
+        <div style={{fontFamily:"'Playfair Display',serif",fontSize:17,fontWeight:700,color:C.k,marginBottom:16}}>Share your experience ✍️</div>
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:13,fontWeight:600,color:C.k,marginBottom:8}}>Rating</div>
+          <div style={{display:"flex",gap:5}}>
+            {[1,2,3,4,5].map(s=>(
+              <button key={s} onClick={()=>setRating(s)} onMouseEnter={()=>setHover(s)} onMouseLeave={()=>setHover(0)} style={{fontSize:26,background:"none",border:"none",cursor:"pointer",transition:"transform .1s",transform:(hover||rating)>=s?"scale(1.2)":"scale(1)",filter:(hover||rating)>=s?"none":"grayscale(1) opacity(0.4)"}}>⭐</button>
+            ))}
+          </div>
+        </div>
+        <div style={{marginBottom:13}}>
+          <div style={{fontSize:13,fontWeight:600,color:C.k,marginBottom:8}}>Feature</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {["AI Advisor","Resume Analyzer","Courses","Certificates","Overall"].map(cat=>(
+              <button key={cat} onClick={()=>setCategory(cat)} style={{padding:"5px 13px",borderRadius:20,border:`1.5px solid ${category===cat?C.k:"rgba(53,64,36,0.2)"}`,background:category===cat?C.k:C.b,color:category===cat?C.b:C.m,fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:category===cat?700:500,transition:"all .2s"}}>{cat}</button>
+            ))}
+          </div>
+        </div>
+        <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name (optional)" style={{width:"100%",background:C.b,border:"2px solid rgba(53,64,36,0.18)",borderRadius:9,padding:"9px 12px",color:C.k,fontSize:13,outline:"none",fontFamily:"'DM Sans',sans-serif",marginBottom:10,boxSizing:"border-box",fontWeight:500}}/>
+        <textarea value={message} onChange={e=>setMessage(e.target.value)} placeholder="Tell us what you liked or how we can improve..." style={{width:"100%",minHeight:100,background:C.b,border:"2px solid rgba(53,64,36,0.18)",borderRadius:9,padding:"9px 12px",color:C.k,fontSize:13,fontFamily:"'DM Sans',sans-serif",outline:"none",resize:"vertical",boxSizing:"border-box",marginBottom:13,fontWeight:500}}/>
+        <button onClick={()=>{if(!rating||!category||!message.trim())return;setFeedbacks(f=>[{name:name||"Anonymous",rating,category,message,date:"Just now"},...f]);setSubmitted(true);}} disabled={!rating||!category||!message.trim()} style={{width:"100%",background:(!rating||!category||!message.trim())?"rgba(53,64,36,0.1)":C.k,border:"none",borderRadius:11,padding:"12px",color:(!rating||!category||!message.trim())?C.m:C.b,fontSize:14,fontWeight:700,cursor:(!rating||!category||!message.trim())?"not-allowed":"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all .2s"}}>Submit Feedback →</button>
+      </div>
+      <div>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:700,color:C.k,marginBottom:13}}>What others say 💬</div>
+        <div style={{display:"flex",flexDirection:"column",gap:10,maxHeight:420,overflowY:"auto"}}>
+          {feedbacks.map((f,i)=>(
+            <div key={i} style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:13,padding:"14px"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:7}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <div style={{width:30,height:30,borderRadius:"50%",background:`linear-gradient(135deg,${C.k},${C.m})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:C.b}}>{f.name[0]}</div>
+                  <div><div style={{fontSize:12,fontWeight:700,color:C.k}}>{f.name}</div><div style={{fontSize:10,color:C.m,fontWeight:500}}>{f.date}</div></div>
+                </div>
+                <div>{"⭐".repeat(f.rating)}</div>
+              </div>
+              <span style={{background:"rgba(53,64,36,0.1)",borderRadius:20,padding:"2px 9px",fontSize:10,color:C.k,fontWeight:700,display:"inline-block",marginBottom:6}}>{f.category}</span>
+              <div style={{fontSize:12,color:C.d,lineHeight:1.6,fontWeight:500}}>{f.message}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══ SALARY INSIGHTS ══
+function SalaryInsights() {
+  const [role, setRole] = useState("");
+  const [city, setCity] = useState("");
+  const [exp, setExp] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState(null);
+  const ROLES = ["Software Engineer","Data Scientist","ML Engineer","Frontend Developer","Backend Developer","DevOps Engineer","Cloud Architect","Product Manager","Data Analyst","Cybersecurity Analyst"];
+  const CITIES = ["Bangalore","Mumbai","Hyderabad","Chennai","Pune","Delhi/NCR","Kolkata","Remote"];
+  const EXPS = ["0–1 yr","1–3 yrs","3–5 yrs","5–8 yrs","8+ yrs"];
+
+  const getSalary = async () => {
+    setLoading(true);
+    try {
+      const text = await askClaude(`Indian tech salary data. Role:${role}, City:${city}, Exp:${exp}. JSON only: {"min_salary":"₹X LPA","max_salary":"₹Y LPA","avg_salary":"₹Z LPA","top_companies":[{"name":"Co","salary":"₹X–Y LPA"},{"name":"Co","salary":"₹X–Y LPA"},{"name":"Co","salary":"₹X–Y LPA"}],"negotiation_tips":["t1","t2","t3"],"in_demand_skills":["s1","s2","s3"],"growth_rate":"X% YoY","market_verdict":"Hot/Stable/Cooling","bonus_info":"typical bonus info"}`, 700);
+      setData(parseJSON(text));
+    } catch(e){ alert(e.message==="NO_KEY"?"🔑 Please enter your Anthropic API key in the yellow banner above.":"Failed: "+e.message); }
+    setLoading(false);
+  };
+
+  const Sel = ({label, value, onChange, options}) => (
+    <div>
+      <div style={{fontSize:12,fontWeight:700,color:C.k,marginBottom:7}}>{label}</div>
+      <select value={value} onChange={e=>onChange(e.target.value)} style={{width:"100%",background:C.t,border:"2px solid rgba(53,64,36,0.18)",borderRadius:9,padding:"9px 12px",color:value?C.k:C.m,fontSize:13,outline:"none",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>
+        <option value="">Select...</option>
+        {options.map(o=><option key={o}>{o}</option>)}
+      </select>
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16}}>
+        <Sel label="Role" value={role} onChange={setRole} options={ROLES}/>
+        <Sel label="City" value={city} onChange={setCity} options={CITIES}/>
+        <Sel label="Experience" value={exp} onChange={setExp} options={EXPS}/>
+      </div>
+      <button onClick={getSalary} disabled={!role||!city||!exp||loading} style={{background:(!role||!city||!exp)?"rgba(53,64,36,0.1)":C.k,border:"none",borderRadius:11,padding:"11px 24px",color:(!role||!city||!exp)?C.m:C.b,fontSize:14,fontWeight:700,cursor:(!role||!city||!exp)||loading?"not-allowed":"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:18}}>
+        {loading?"⏳ Fetching...":"💰 Get Salary Report"}
+      </button>
+      {data&&(
+        <div>
+          <div style={{background:`linear-gradient(135deg,${C.k},${C.m})`,borderRadius:16,padding:"20px 22px",marginBottom:14}}>
+            <div style={{fontSize:10,letterSpacing:"2px",color:"rgba(229,215,196,0.7)",textTransform:"uppercase",fontWeight:600,marginBottom:10}}>{role} · {city} · {exp}</div>
+            <div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:10}}>
+              {[["Min",data.min_salary],["Average",data.avg_salary],["Max",data.max_salary]].map(([l,v])=>(
+                <div key={l}><div style={{fontSize:10,color:"rgba(229,215,196,0.6)",marginBottom:2,fontWeight:500}}>{l}</div><div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:C.b}}>{v}</div></div>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:9,flexWrap:"wrap"}}>
+              <span style={{background:"rgba(229,215,196,0.15)",borderRadius:20,padding:"3px 13px",fontSize:11,color:C.b,fontWeight:600}}>📈 {data.growth_rate}</span>
+              <span style={{background:"rgba(229,215,196,0.15)",borderRadius:20,padding:"3px 13px",fontSize:11,color:C.b,fontWeight:600}}>🔥 {data.market_verdict}</span>
+              <span style={{background:"rgba(229,215,196,0.15)",borderRadius:20,padding:"3px 13px",fontSize:11,color:C.b,fontWeight:600}}>🎁 {data.bonus_info}</span>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:13,padding:"14px"}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,color:C.k,marginBottom:11}}>Top Companies</div>
+              {data.top_companies?.map(co=>(
+                <div key={co.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9,paddingBottom:9,borderBottom:"1px solid rgba(53,64,36,0.08)"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:C.k}}>{co.name}</div>
+                  <div style={{fontSize:12,fontWeight:700,color:C.m}}>{co.salary}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:13,padding:"14px"}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,color:C.k,marginBottom:11}}>Negotiation Tips 🤝</div>
+              {data.negotiation_tips?.map((t,i)=><div key={i} style={{display:"flex",gap:7,marginBottom:8,alignItems:"flex-start"}}><span style={{color:C.m,fontWeight:700,flexShrink:0}}>{i+1}.</span><span style={{fontSize:12,color:C.d,lineHeight:1.5,fontWeight:500}}>{t}</span></div>)}
+              <div style={{marginTop:11}}><div style={{fontSize:11,fontWeight:700,color:C.k,marginBottom:6}}>In-demand skills:</div><div style={{display:"flex",flexWrap:"wrap",gap:5}}>{data.in_demand_skills?.map(s=><span key={s} style={{background:"rgba(53,64,36,0.1)",borderRadius:20,padding:"2px 9px",fontSize:10,color:C.k,fontWeight:600}}>{s}</span>)}</div></div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══ DASHBOARD ══
+const TABS = [{id:"home",label:"Home",icon:"⊞"},{id:"courses",label:"Courses",icon:"📚"},{id:"advisor",label:"AI Advisor",icon:"✦"},{id:"resume",label:"Resume AI",icon:"📄"},{id:"salary",label:"Salary",icon:"💰"},{id:"certs",label:"Certificates",icon:"🏅"},{id:"feedback",label:"Feedback",icon:"💬"},{id:"profile",label:"Profile",icon:"◎"}];
+
+function Dashboard({user, onLogout, onCourse}) {
+  const [tab, setTab] = useState("home");
+  const [apiKey, setApiKey] = useState(window._SPAI_KEY||"");
+  const [keyInput, setKeyInput] = useState("");
+  const [showKeyBar, setShowKeyBar] = useState(false);
+  const [keyOk, setKeyOk] = useState(true);
+  const [testingKey, setTestingKey] = useState(false);
+  const [keyError, setKeyError] = useState("");
+
+  const saveKey = async () => {
+    const k = keyInput.trim();
+    if(!k){setKeyError("Please enter your API key.");return;}
+    if(!k.startsWith("sk-")){setKeyError("Invalid key format.");return;}
+    setTestingKey(true); setKeyError("");
+    try {
+      window._SPAI_KEY = k;
+      await askClaude("Say OK in one word.", 10);
+      setApiKey(k); setKeyOk(true); setShowKeyBar(false); setKeyError("");
+    } catch(e){
+      window._SPAI_KEY = "";
+      setKeyError("Invalid key: "+e.message);
+    }
+    setTestingKey(false);
+  };
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterCat, setFilterCat] = useState("All");
+  const enrolled = COURSES.filter(c=>c.enrolled);
+  const categories = ["All",...Array.from(new Set(COURSES.map(c=>c.category)))];
+
+  const filteredCourses = COURSES.filter(c=>{
+    const matchSearch = c.title.toLowerCase().includes(searchTerm.toLowerCase()) || c.category.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchCat = filterCat==="All" || c.category===filterCat;
+    return matchSearch && matchCat;
+  });
+
+  return (
+    <div style={{minHeight:"100vh",background:C.b}}>
+      <style>{`
+        @keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pulseKey{0%,100%{opacity:1}50%{opacity:.6}}
+        .tb{background:none;border:none;color:#CFBB99;cursor:pointer;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;border-radius:10px;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:6px}
+        .tb:hover{color:#E5D7C4;background:rgba(229,215,196,0.1)}
+        .tb.on{color:#354024;background:#889063;font-weight:700}
+        .cc{background:#CFBB99;border:1.5px solid rgba(53,64,36,0.15);border-radius:18px;overflow:hidden;cursor:pointer;transition:all .3s}
+        .cc:hover{border-color:#354024;transform:translateY(-4px);box-shadow:0 12px 36px rgba(53,64,36,0.18)}
+        .sc{background:#CFBB99;border:1.5px solid rgba(53,64,36,0.12);border-radius:16px;padding:18px;transition:all .2s}
+        .sc:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(53,64,36,0.1)}
+        .catbtn{padding:6px 14px;border-radius:20px;border:1.5px solid rgba(53,64,36,0.2);background:transparent;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;color:#889063;transition:all .2s}
+        .catbtn.active{background:#354024;color:#E5D7C4;border-color:#354024}
+        .keyinp{background:#fff8f0;border:2px solid rgba(53,64,36,0.25);border-radius:9px;padding:8px 13px;color:#354024;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;flex:1;font-weight:500}
+        .keyinp:focus{border-color:#889063}
+      `}</style>
+
+      {/* ── API KEY BANNER ── */}
+      {showKeyBar && (
+        <div style={{background:"#2d1f0a",borderBottom:"2px solid #889063",padding:"10px 20px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",position:"sticky",top:0,zIndex:200}}>
+          <span style={{fontSize:16}}>🔑</span>
+          <span style={{color:"#CFBB99",fontSize:13,fontWeight:600,whiteSpace:"nowrap"}}>Enter Anthropic API Key to use AI features:</span>
+          <input className="keyinp" type="password" value={keyInput} onChange={e=>setKeyInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveKey()} placeholder="sk-ant-api03-..." style={{minWidth:220,flex:1}}/>
+          <button onClick={saveKey} disabled={testingKey} style={{background:"#889063",border:"none",borderRadius:9,padding:"8px 18px",color:"#354024",fontSize:13,fontWeight:800,cursor:testingKey?"wait":"pointer",fontFamily:"'DM Sans',sans-serif",whiteSpace:"nowrap"}}>
+            {testingKey?"Testing...":"Save & Test ✓"}
+          </button>
+          {keyError&&<span style={{color:"#fca5a5",fontSize:12,fontWeight:600,width:"100%"}}>{keyError}</span>}
+          <span style={{color:"rgba(207,187,153,0.5)",fontSize:11,width:"100%",fontWeight:400}}>Get your key at <span style={{color:"#889063"}}>console.anthropic.com</span> → API Keys. Your key is never stored — it stays in memory only.</span>
+        </div>
+      )}
+
+      {keyOk && (
+        <div style={{background:"rgba(136,144,99,0.13)",borderBottom:"1px solid rgba(136,144,99,0.3)",padding:"5px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span style={{fontSize:12,color:"#354024",fontWeight:600}}>✅ AI key active — all features enabled</span>
+          <button onClick={()=>{window._SPAI_KEY="";setApiKey("");setKeyOk(false);setShowKeyBar(true);setKeyInput("");}} style={{background:"none",border:"none",fontSize:11,color:"#889063",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>Change key</button>
+        </div>
+      )}
+
+      <header style={{background:C.k,padding:"11px 22px",display:"flex",alignItems:"center",gap:10,position:"sticky",top:0,zIndex:100,boxShadow:"0 4px 20px rgba(53,64,36,0.3)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+          <div style={{width:30,height:30,borderRadius:8,background:C.m,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>🌿</div>
+          <span style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:C.b}}>SkillPath<span style={{color:C.m}}>AI</span></span>
+        </div>
+        <nav style={{display:"flex",gap:2,overflowX:"auto",flex:1,scrollbarWidth:"none"}}>
+          {TABS.map(t=><button key={t.id} className={`tb ${tab===t.id?"on":""}`} onClick={()=>setTab(t.id)}><span style={{fontSize:11}}>{t.icon}</span>{t.label}</button>)}
+        </nav>
+        <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+          <div style={{width:28,height:28,borderRadius:"50%",background:C.m,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:C.k}}>{(user.name||user.email||"U")[0].toUpperCase()}</div>
+          <button onClick={onLogout} style={{background:"rgba(229,215,196,0.12)",border:"1.5px solid rgba(229,215,196,0.2)",borderRadius:7,padding:"5px 11px",color:C.t,fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>Logout</button>
+        </div>
+      </header>
+
+      <main style={{padding:"22px 26px 48px",maxWidth:1080,margin:"0 auto",width:"100%",boxSizing:"border-box",animation:"slideUp .4s ease both"}}>
+
+        {tab==="home"&&<>
+          <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:24,fontWeight:700,color:C.k,margin:"0 0 3px"}}>Hey, {user.name?.split(" ")[0]||"Learner"} 👋</h1>
+          <p style={{color:C.m,fontSize:13,margin:"0 0 20px",fontWeight:500}}>Your AI-powered career platform is ready.</p>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:11,marginBottom:22}}>
+            {[{val:"3",label:"Active courses",icon:"📚",g:`linear-gradient(135deg,${C.k},${C.m})`},{val:"2",label:"Certificates",icon:"🏅",g:`linear-gradient(135deg,${C.m},${C.t})`},{val:"65%",label:"Avg progress",icon:"📈",g:`linear-gradient(135deg,${C.d},${C.m})`},{val:"850",label:"Skill score",icon:"⚡",g:`linear-gradient(135deg,${C.k},${C.d})`}].map(({val,label,icon,g})=>(
+              <div key={label} className="sc">
+                <div style={{width:36,height:36,borderRadius:10,background:g,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,marginBottom:9,boxShadow:"0 3px 10px rgba(53,64,36,0.18)"}}>{icon}</div>
+                <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:C.k}}>{val}</div>
+                <div style={{fontSize:11,color:C.m,marginTop:2,fontWeight:500}}>{label}</div>
+              </div>
+            ))}
+          </div>
+          <h2 style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:700,color:C.k,marginBottom:12}}>Continue learning <span style={{background:C.k,color:C.t,fontSize:10,padding:"2px 9px",borderRadius:20,marginLeft:7,fontFamily:"'DM Sans',sans-serif",fontWeight:600}}>All Free ✓</span></h2>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:12,marginBottom:22}}>
+            {enrolled.map(c=>(
+              <div key={c.id} className="cc" onClick={()=>onCourse(c)}>
+                <div style={{height:72,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30,background:GRADS[c.category]||GRADS["ML & AI"]}}>{c.thumb}</div>
+                <div style={{padding:"12px 14px"}}>
+                  <span style={{background:"rgba(53,64,36,0.12)",color:C.k,borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:700}}>{c.category}</span>
+                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,color:C.k,margin:"6px 0 3px",lineHeight:1.4}}>{c.title}</div>
+                  <div style={{fontSize:11,color:C.m,marginBottom:8,fontWeight:500}}>⭐ {c.rating} · {c.lessons} lessons</div>
+                  <div style={{background:"rgba(53,64,36,0.12)",borderRadius:4,height:5,marginBottom:3}}><div style={{width:`${c.progress}%`,height:5,borderRadius:4,background:`linear-gradient(90deg,${C.k},${C.m})`}}/></div>
+                  <div style={{fontSize:10,color:C.m,fontWeight:500}}>{c.progress}% complete</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:11}}>
+            {[{icon:"📄",title:"Resume AI",desc:"Upload PDF → career suggestions, AWS check, ATS score",tab:"resume"},{icon:"✦",title:"AI Career Advisor",desc:"Skill-based career roadmap by Claude AI",tab:"advisor"},{icon:"💰",title:"Salary Insights",desc:"Real salary data for Indian tech market",tab:"salary"}].map(f=>(
+              <div key={f.title} onClick={()=>setTab(f.tab)} style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:14,padding:"16px 14px",cursor:"pointer",transition:"all .2s"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-3px)"} onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>
+                <div style={{fontSize:22,marginBottom:7}}>{f.icon}</div>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,color:C.k,marginBottom:3}}>{f.title}</div>
+                <div style={{fontSize:11,color:C.m,lineHeight:1.5,fontWeight:500}}>{f.desc}</div>
+              </div>
+            ))}
+          </div>
+        </>}
+
+        {tab==="courses"&&<>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12,marginBottom:16}}>
+            <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:C.k,margin:0}}>All Courses <span style={{color:C.m,fontSize:12,fontFamily:"'DM Sans',sans-serif",fontWeight:600}}>· 100% Free · {COURSES.length} courses</span></h1>
+            <input value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} placeholder="🔍 Search courses..." style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.2)",borderRadius:10,padding:"8px 14px",color:C.k,fontSize:13,outline:"none",fontFamily:"'DM Sans',sans-serif",width:200}}/>
+          </div>
+          <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:16}}>
+            {categories.map(cat=>(
+              <button key={cat} className={`catbtn ${filterCat===cat?"active":""}`} onClick={()=>setFilterCat(cat)}>{cat}</button>
+            ))}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:12}}>
+            {filteredCourses.map(c=>(
+              <div key={c.id} className="cc" onClick={()=>onCourse(c)}>
+                <div style={{height:82,display:"flex",alignItems:"center",justifyContent:"center",fontSize:34,background:GRADS[c.category]||GRADS["ML & AI"]}}>{c.thumb}</div>
+                <div style={{padding:"14px 15px"}}>
+                  <span style={{background:"rgba(53,64,36,0.12)",color:C.k,borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:700}}>{c.category}</span>
+                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,color:C.k,margin:"6px 0 3px",lineHeight:1.4}}>{c.title}</div>
+                  <div style={{fontSize:11,color:C.m,marginBottom:11,fontWeight:500}}>⭐ {c.rating} · {c.lessons} lessons · {c.hours} hrs</div>
+                  {c.enrolled?<button style={{width:"100%",padding:"7px",borderRadius:8,border:`2px solid ${C.k}`,background:"transparent",color:C.k,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Continue →</button>:<button style={{width:"100%",padding:"7px",borderRadius:8,border:"none",background:`linear-gradient(135deg,${C.k},${C.m})`,color:C.b,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Enroll Free →</button>}
+                </div>
+              </div>
+            ))}
+          </div>
+          {filteredCourses.length===0&&<div style={{textAlign:"center",padding:"48px",color:C.m,fontWeight:500}}>No courses found for "{searchTerm}"</div>}
+        </>}
+
+        {tab==="advisor"&&<>
+          <div style={{display:"flex",alignItems:"center",gap:11,marginBottom:20}}>
+            <div style={{width:40,height:40,borderRadius:12,background:`linear-gradient(135deg,${C.k},${C.m})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>✦</div>
+            <div><div style={{fontFamily:"'Playfair Display',serif",fontSize:19,fontWeight:700,color:C.k}}>AI Career Advisor</div><div style={{fontSize:12,color:C.m,fontWeight:500}}>Select skills → Claude AI gives personalized roadmap</div></div>
+          </div>
+          <AIAdvisor/>
+        </>}
+
+        {tab==="resume"&&<>
+          <div style={{display:"flex",alignItems:"center",gap:11,marginBottom:20}}>
+            <div style={{width:40,height:40,borderRadius:12,background:`linear-gradient(135deg,${C.k},${C.m})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>📄</div>
+            <div><div style={{fontFamily:"'Playfair Display',serif",fontSize:19,fontWeight:700,color:C.k}}>Resume AI Analyzer</div><div style={{fontSize:12,color:C.m,fontWeight:500}}>Upload resume PDF/DOCX → career suggestions · AWS check · rating · interview prep</div></div>
+          </div>
+          <ResumeAnalyzer/>
+        </>}
+
+        {tab==="salary"&&<>
+          <div style={{display:"flex",alignItems:"center",gap:11,marginBottom:20}}>
+            <div style={{width:40,height:40,borderRadius:12,background:`linear-gradient(135deg,${C.k},${C.m})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>💰</div>
+            <div><div style={{fontFamily:"'Playfair Display',serif",fontSize:19,fontWeight:700,color:C.k}}>Salary Insights</div><div style={{fontSize:12,color:C.m,fontWeight:500}}>AI-powered salary data for Indian tech market</div></div>
+          </div>
+          <SalaryInsights/>
+        </>}
+
+        {tab==="certs"&&<>
+          <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:C.k,margin:"0 0 18px"}}>My Certificates 🏅</h1>
+          <div style={{display:"flex",flexDirection:"column",gap:11,marginBottom:20}}>
+            {[{name:"Python for Beginners",date:"Jan 12, 2025",code:"SKP-2025-0112AB"},{name:"SQL & Database Fundamentals",date:"Feb 28, 2025",code:"SKP-2025-0228CD"}].map(c=>(
+              <div key={c.code} style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.15)",borderRadius:14,padding:"16px 20px",display:"flex",alignItems:"center",gap:13,flexWrap:"wrap"}}>
+                <div style={{width:44,height:44,background:`linear-gradient(135deg,${C.k},${C.m})`,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🏅</div>
+                <div style={{flex:1}}><div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:C.k}}>{c.name}</div><div style={{fontSize:11,color:C.m,marginTop:2,fontWeight:500}}>Issued {c.date} · ID: {c.code}</div></div>
+                <button onClick={()=>downloadCertificatePDF(c.name, user.name||"Learner")} style={{padding:"7px 14px",borderRadius:8,background:C.k,border:"none",color:C.b,fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:700}}>⬇ Download PDF</button>
+              </div>
+            ))}
+          </div>
+          <div style={{background:`linear-gradient(135deg,${C.k},${C.m})`,borderRadius:14,padding:"20px",textAlign:"center"}}>
+            <div style={{fontSize:26,marginBottom:7}}>🎯</div>
+            <div style={{fontFamily:"'Playfair Display',serif",fontSize:14,fontWeight:700,color:C.b,marginBottom:4}}>Complete courses to earn more</div>
+            <div style={{fontSize:12,color:C.t,marginBottom:14,fontWeight:500}}>Pass final quiz → Real PDF certificate downloads instantly</div>
+            <button onClick={()=>setTab("courses")} style={{background:C.b,border:"none",borderRadius:9,padding:"8px 20px",color:C.k,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Browse courses →</button>
+          </div>
+        </>}
+
+        {tab==="feedback"&&<>
+          <div style={{display:"flex",alignItems:"center",gap:11,marginBottom:20}}>
+            <div style={{width:40,height:40,borderRadius:12,background:`linear-gradient(135deg,${C.k},${C.m})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>💬</div>
+            <div><div style={{fontFamily:"'Playfair Display',serif",fontSize:19,fontWeight:700,color:C.k}}>Feedback</div><div style={{fontSize:12,color:C.m,fontWeight:500}}>Help us improve SkillPath AI</div></div>
+          </div>
+          <Feedback/>
+        </>}
+
+        {tab==="profile"&&<>
+          <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:C.k,margin:"0 0 18px"}}>My Profile</h1>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:13}}>
+            <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.15)",borderRadius:16,padding:"22px"}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
+                <div style={{width:50,height:50,borderRadius:"50%",background:`linear-gradient(135deg,${C.k},${C.m})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:700,color:C.b}}>{(user.name||user.email||"U")[0].toUpperCase()}</div>
+                <div><div style={{fontFamily:"'Playfair Display',serif",fontSize:17,fontWeight:700,color:C.k}}>{user.name||"Learner"}</div><div style={{fontSize:12,color:C.m,fontWeight:500}}>{user.role||"Student"}</div></div>
+              </div>
+              {[["Email",user.email||"—"],["Role",user.role||"Student"],["Member since","April 2025"],["Certificates","2 earned"]].map(([k,v])=>(
+                <div key={k} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid rgba(53,64,36,0.1)",paddingBottom:10,marginBottom:10}}>
+                  <span style={{fontSize:12,color:C.m,fontWeight:500}}>{k}</span>
+                  <span style={{fontSize:13,color:C.k,fontWeight:600}}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.15)",borderRadius:16,padding:"22px"}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:C.k,marginBottom:14}}>My Skills</div>
+              {[["Python",85],["Machine Learning",60],["SQL",75],["React",40],["Data Analysis",50]].map(([s,v])=>(
+                <div key={s} style={{marginBottom:12}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:12,color:C.k,fontWeight:600}}>{s}</span><span style={{fontSize:11,color:C.m,fontWeight:500}}>{v}%</span></div>
+                  <div style={{background:"rgba(53,64,36,0.1)",borderRadius:4,height:6}}><div style={{width:`${v}%`,height:6,borderRadius:4,background:`linear-gradient(90deg,${C.k},${C.m})`}}/></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>}
+
+      </main>
+    </div>
+  );
+}
+
+// ══ COURSE PAGE — Fixed Video Player & Certificate ══
+function CoursePage({course, onBack, user}) {
+  const list_data = course.lessons_data || [
+    {id:1,title:"Introduction",duration:"10 min",type:"video",done:true},
+    {id:2,title:"Core Concepts",duration:"20 min",type:"video",done:false},
+    {id:3,title:"Advanced Topics",duration:"25 min",type:"video",done:false},
+    {id:4,title:"Final Quiz",duration:"15 min",type:"quiz",done:false},
+  ];
+  const videoIds = course.videoIds || ["aircAruvnKk","PeMlggyqz0Y","ukzFI9rgwfU","E0Ld7ZgsuoA"];
+  const QUIZ = course.quiz || [
+    {q:"What is the main topic of this course?",opts:["Option A","Option B","The course subject","Option D"],ans:2},
+    {q:"What is a best practice in this domain?",opts:["Ignore documentation","Follow standards","Skip testing","None"],ans:1},
+    {q:"How do you improve in this field?",opts:["Stop learning","Practice consistently","Copy others","None"],ans:1}
+  ];
+
+  const [active, setActive] = useState(list_data[0]);
+  const [list, setList] = useState(list_data);
+  const [answers, setAnswers] = useState({});
+  const [quizDone, setQuizDone] = useState(false);
+  const [showCert, setShowCert] = useState(false);
+
+  const idx = list.findIndex(l=>l.id===active.id);
+  const donePct = Math.round(list.filter(l=>l.done).length/list.length*100);
+  const score = Object.entries(answers).filter(([i,a])=>QUIZ[+i]?.ans===+a).length;
+  const passed = score>=Math.ceil(QUIZ.length*0.6);
+  const markDone = id => setList(p=>p.map(l=>l.id===id?{...l,done:true}:l));
+  const next = () => { const n=list[idx+1]; if(n){markDone(active.id);setActive(n);} };
+
+  // Get the YouTube video ID for current lesson
+  const currentVideoId = videoIds[idx] || videoIds[0] || "aircAruvnKk";
+
+  return (
+    <div style={{minHeight:"100vh",background:C.b,display:"flex",flexDirection:"column"}}>
+      <style>{`.lr{display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:9px;cursor:pointer;border:1.5px solid transparent;transition:all .2s}.lr:hover{background:rgba(53,64,36,0.06)}.lr.on{background:rgba(53,64,36,0.1);border-color:rgba(53,64,36,0.22)}.qb{display:block;width:100%;text-align:left;padding:11px 14px;border-radius:11px;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;border:1.5px solid rgba(53,64,36,0.18);background:#CFBB99;color:#354024;transition:all .2s;margin-bottom:8px;font-weight:500}.qb:hover{border-color:#354024;background:#E5D7C4}.qb.sel{border-color:#354024;background:#354024;color:#E5D7C4;font-weight:700}.qb.ok{border-color:#889063;background:rgba(136,144,99,0.2);color:#354024;font-weight:700}.qb.no{border-color:#7f1d1d;background:rgba(127,29,29,0.08);color:#7f1d1d}`}</style>
+
+      <header style={{background:C.k,padding:"12px 20px",display:"flex",alignItems:"center",gap:13,position:"sticky",top:0,zIndex:100,boxShadow:"0 4px 20px rgba(53,64,36,0.3)"}}>
+        <button onClick={onBack} style={{background:"rgba(229,215,196,0.12)",border:"1.5px solid rgba(229,215,196,0.22)",borderRadius:7,padding:"6px 12px",color:C.t,fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500,flexShrink:0}}>← Back</button>
+        <span style={{fontSize:18,flexShrink:0}}>{course.thumb}</span>
+        <div style={{flex:1,minWidth:0}}><div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:C.b,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{course.title}</div><div style={{fontSize:11,color:C.m,fontWeight:500}}>{list.length} lessons</div></div>
+        <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}><span style={{fontSize:11,color:C.t,fontWeight:500}}>{donePct}%</span><div style={{width:80,background:"rgba(229,215,196,0.14)",borderRadius:3,height:5}}><div style={{width:`${donePct}%`,height:5,borderRadius:3,background:`linear-gradient(90deg,${C.m},${C.t})`,transition:"width .5s"}}/></div></div>
+      </header>
+
+      <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+        <aside style={{width:260,minWidth:260,borderRight:"1.5px solid rgba(53,64,36,0.12)",padding:"14px 10px",overflowY:"auto",background:C.t}}>
+          <div style={{fontSize:10,fontWeight:700,color:C.m,letterSpacing:"1px",textTransform:"uppercase",marginBottom:10}}>Curriculum</div>
+          {list.map((l,i)=>(
+            <div key={l.id} className={`lr ${active.id===l.id?"on":""}`} onClick={()=>setActive(l)}>
+              <div style={{width:23,height:23,borderRadius:"50%",background:l.done?C.m:"rgba(53,64,36,0.07)",border:`1.5px solid ${l.done?C.k:"rgba(53,64,36,0.18)"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:l.done?C.b:C.m,flexShrink:0,fontWeight:700}}>{l.done?"✓":i+1}</div>
+              <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,color:active.id===l.id?C.k:C.d,fontWeight:active.id===l.id?700:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.title}</div><div style={{fontSize:10,color:C.m,marginTop:1,fontWeight:500}}>{l.type==="quiz"?"📝":"▶"} {l.duration}</div></div>
+            </div>
+          ))}
+        </aside>
+
+        <main style={{flex:1,padding:"24px 28px",overflowY:"auto"}}>
+          {showCert&&(
+            <div style={{maxWidth:560,margin:"0 auto",textAlign:"center"}}>
+              <div style={{background:`linear-gradient(135deg,${C.k},${C.m})`,borderRadius:20,padding:"38px 32px",boxShadow:"0 16px 48px rgba(53,64,36,0.32)"}}>
+                <div style={{fontSize:56,marginBottom:12}}>🏅</div>
+                <div style={{fontFamily:"'Playfair Display',serif",fontSize:24,fontWeight:700,color:C.b,marginBottom:5}}>Congratulations!</div>
+                <div style={{fontSize:13,color:C.t,marginBottom:24,fontWeight:500}}>You successfully completed</div>
+                <div style={{background:"rgba(229,215,196,0.1)",border:"1.5px solid rgba(229,215,196,0.25)",borderRadius:14,padding:"22px",marginBottom:22}}>
+                  <div style={{fontSize:9,letterSpacing:"3px",color:"rgba(229,215,196,0.5)",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>Certificate of Completion</div>
+                  <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,color:C.b,marginBottom:5}}>{course.title}</div>
+                  <div style={{fontSize:12,color:C.t,fontWeight:500}}>SkillPath AI · {new Date().toLocaleDateString("en-IN",{year:"numeric",month:"long",day:"numeric"})}</div>
+                  <div style={{display:"flex",justifyContent:"center",gap:4,marginTop:10}}>{"★★★★★".split("").map((s,i)=><span key={i} style={{color:C.m,fontSize:16}}>{s}</span>)}</div>
+                </div>
+                <button
+                  onClick={()=>downloadCertificatePDF(course.title, user?.name||"Learner")}
+                  style={{background:C.b,border:"none",borderRadius:12,padding:"14px 26px",color:C.k,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"block",width:"100%",marginBottom:10}}
+                >
+                  ⬇️ Download Certificate PDF
+                </button>
+                <button onClick={onBack} style={{background:"rgba(229,215,196,0.1)",border:"1.5px solid rgba(229,215,196,0.22)",borderRadius:11,padding:"10px",color:C.t,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",width:"100%",fontWeight:500}}>← Back to courses</button>
+              </div>
+            </div>
+          )}
+
+          {!showCert&&active.type==="quiz"&&(
+            <div style={{maxWidth:560}}>
+              <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,color:C.k,marginBottom:5}}>Final Quiz 📝</div>
+              <div style={{fontSize:13,color:C.m,marginBottom:24,fontWeight:500}}>Score {Math.ceil(QUIZ.length*0.6)}/{QUIZ.length} to earn your certificate</div>
+              {QUIZ.map((q,qi)=>(
+                <div key={qi} style={{marginBottom:22,background:C.t,borderRadius:14,padding:"16px",border:"1.5px solid rgba(53,64,36,0.12)"}}>
+                  <div style={{fontSize:14,color:C.k,fontWeight:700,marginBottom:12,lineHeight:1.5}}>Q{qi+1}. {q.q}</div>
+                  {q.opts.map((o,oi)=>{let cls="qb";if(quizDone){if(oi===q.ans)cls+=" ok";else if(answers[qi]===oi)cls+=" no";}else if(answers[qi]===oi)cls+=" sel";return <button key={oi} className={cls} disabled={quizDone} onClick={()=>setAnswers({...answers,[qi]:oi})}>{String.fromCharCode(65+oi)}. {o}</button>;})}
+                </div>
+              ))}
+              {!quizDone?(
+                <button disabled={Object.keys(answers).length<QUIZ.length} onClick={()=>{setQuizDone(true);if(passed)setTimeout(()=>setShowCert(true),600);}} style={{background:Object.keys(answers).length<QUIZ.length?"rgba(53,64,36,0.1)":C.k,border:"none",borderRadius:11,padding:"12px 28px",color:Object.keys(answers).length<QUIZ.length?C.m:C.b,fontSize:14,fontWeight:700,cursor:Object.keys(answers).length<QUIZ.length?"not-allowed":"pointer",fontFamily:"'DM Sans',sans-serif"}}>Submit Quiz →</button>
+              ):(
+                <div style={{background:passed?"rgba(53,64,36,0.08)":"rgba(127,29,29,0.06)",border:`2px solid ${passed?C.m:"#fca5a5"}`,borderRadius:13,padding:"18px",textAlign:"center"}}>
+                  <div style={{fontSize:34,marginBottom:7}}>{passed?"🎉":"😕"}</div>
+                  <div style={{fontFamily:"'Playfair Display',serif",fontSize:17,fontWeight:700,color:passed?C.k:"#7f1d1d",marginBottom:4}}>{passed?"Passed! Certificate ready!":"Try again"}</div>
+                  <div style={{fontSize:13,color:C.m,fontWeight:500}}>Score: {score}/{QUIZ.length}</div>
+                  {!passed&&<button onClick={()=>{setQuizDone(false);setAnswers({});}} style={{marginTop:11,background:C.k,border:"none",borderRadius:9,padding:"8px 20px",color:C.b,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600}}>Retry</button>}
+                  {passed&&<button onClick={()=>setShowCert(true)} style={{marginTop:11,background:C.m,border:"none",borderRadius:9,padding:"10px 22px",color:C.b,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:700}}>View Certificate 🏅</button>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!showCert&&active.type!=="quiz"&&(
+            <div style={{maxWidth:760}}>
+              <div style={{fontFamily:"'Playfair Display',serif",fontSize:19,fontWeight:700,color:C.k,marginBottom:4}}>{active.title}</div>
+              <div style={{fontSize:12,color:C.m,marginBottom:16,fontWeight:500}}>Lesson {idx+1} of {list.length} · {active.duration}</div>
+
+              {/* ✅ FIXED: Embedded YouTube video player */}
+              <div style={{position:"relative",paddingBottom:"56.25%",height:0,borderRadius:15,overflow:"hidden",marginBottom:18,background:C.k,border:"2px solid rgba(53,64,36,0.18)",boxShadow:"0 8px 28px rgba(53,64,36,0.22)"}}>
+                <iframe
+                  key={active.id+"-"+currentVideoId}
+                  src={`https://www.youtube.com/embed/${currentVideoId}?rel=0&modestbranding=1&autoplay=0&fs=1&iv_load_policy=3`}
+                  title={active.title}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  style={{position:"absolute",top:0,left:0,width:"100%",height:"100%"}}
+                />
+              </div>
+
+              <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.14)",borderRadius:12,padding:"14px 17px",marginBottom:18}}>
+                <div style={{fontSize:12,fontWeight:700,color:C.k,marginBottom:4}}>💡 Key takeaways</div>
+                <div style={{fontSize:12,color:C.d,lineHeight:1.7,fontWeight:500}}>Watch the full video and take notes. Click <strong>Mark Complete & Next</strong> to progress toward your certificate.</div>
+              </div>
+              <div style={{display:"flex",gap:10}}>
+                {idx>0&&<button onClick={()=>{const p=list[idx-1];if(p)setActive(p);}} style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.2)",borderRadius:9,padding:"10px 18px",color:C.k,fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600}}>← Previous</button>}
+                <button onClick={next} style={{background:`linear-gradient(135deg,${C.k},${C.m})`,border:"none",borderRadius:9,padding:"10px 24px",color:C.b,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flex:1,maxWidth:260}}>
+                  {idx===list.length-1?"Finish Course 🏁":"Mark Complete & Next →"}
+                </button>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+// ══ ADMIN DASHBOARD ══
+function AdminDashboard({onLogout}) {
+  const [tab, setTab] = useState("overview");
+  const [users, setUsers] = useState([
+    {id:1,name:"Priya Sharma",email:"priya@example.com",role:"Student",courses:3,active:true},
+    {id:2,name:"Rahul Verma",email:"rahul@example.com",role:"Working Professional",courses:5,active:true},
+    {id:3,name:"Ananya Singh",email:"ananya@example.com",role:"Career Switcher",courses:2,active:false},
+    {id:4,name:"Vikram Nair",email:"vikram@example.com",role:"Fresher",courses:4,active:true},
+  ]);
+  const ADMTABS = [{id:"overview",label:"Overview"},{id:"users",label:"Users"},{id:"analytics",label:"Analytics"}];
+  return (
+    <div style={{minHeight:"100vh",background:C.b}}>
+      <header style={{background:C.k,padding:"13px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100,boxShadow:"0 4px 20px rgba(53,64,36,0.3)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:9}}><div style={{width:32,height:32,borderRadius:9,background:C.m,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🛡</div><span style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:C.b}}>SkillPath <span style={{color:C.m}}>Admin</span></span><span style={{background:C.m,borderRadius:20,padding:"2px 11px",fontSize:10,color:C.k,fontWeight:700}}>ADMIN</span></div>
+        <div style={{display:"flex",gap:4}}>{ADMTABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{background:tab===t.id?"#889063":"none",border:"none",color:tab===t.id?"#354024":"#CFBB99",cursor:"pointer",padding:"8px 15px",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:tab===t.id?700:500,borderRadius:10,transition:"all .2s"}}>{t.label}</button>)}</div>
+        <button onClick={onLogout} style={{background:"rgba(229,215,196,0.12)",border:"1.5px solid rgba(229,215,196,0.22)",borderRadius:7,padding:"6px 13px",color:C.t,fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>Logout</button>
+      </header>
+      <main style={{padding:"24px 28px",maxWidth:1000,margin:"0 auto",width:"100%",boxSizing:"border-box"}}>
+        {tab==="overview"&&<>
+          <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:C.k,margin:"0 0 18px"}}>Admin Dashboard</h1>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:22}}>
+            {[{val:"3,629",label:"Total learners",icon:"👥"},{val:"30+",label:"Free courses",icon:"📚"},{val:"8,412",label:"Certificates",icon:"🏅"},{val:"94%",label:"Completion",icon:"📈"}].map(({val,label,icon})=>(
+              <div key={label} style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:15,padding:"18px"}}>
+                <div style={{fontSize:22,marginBottom:9}}>{icon}</div>
+                <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:C.k}}>{val}</div>
+                <div style={{fontSize:11,color:C.m,marginTop:2,fontWeight:500}}>{label}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:15,overflow:"hidden"}}>
+            {users.slice(0,4).map(u=>(
+              <div key={u.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 18px",borderBottom:"1px solid rgba(53,64,36,0.06)"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,borderRadius:"50%",background:`linear-gradient(135deg,${C.k},${C.m})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:C.b}}>{u.name[0]}</div><div><div style={{fontSize:13,fontWeight:600,color:C.k}}>{u.name}</div><div style={{fontSize:11,color:C.m,fontWeight:500}}>{u.role}</div></div></div>
+                <span style={{background:u.active?"rgba(53,64,36,0.1)":"rgba(53,64,36,0.05)",color:u.active?C.k:C.m,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700}}>{u.active?"Active":"Inactive"}</span>
+              </div>
+            ))}
+          </div>
+        </>}
+        {tab==="users"&&<>
+          <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:C.k,margin:"0 0 18px"}}>Users ({users.length})</h1>
+          <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:15,overflow:"hidden"}}>
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <thead><tr>{["Name","Email","Role","Courses","Status","Action"].map(h=><th key={h} style={{fontSize:10,fontWeight:700,color:C.m,letterSpacing:".5px",textTransform:"uppercase",padding:"12px 15px",textAlign:"left",borderBottom:"2px solid rgba(53,64,36,0.1)",background:C.b}}>{h}</th>)}</tr></thead>
+              <tbody>{users.map(u=>(
+                <tr key={u.id}>
+                  <td style={{padding:"12px 15px",fontSize:13,color:C.k,fontWeight:500,borderBottom:"1px solid rgba(53,64,36,0.06)"}}>{u.name}</td>
+                  <td style={{padding:"12px 15px",fontSize:13,color:C.m,borderBottom:"1px solid rgba(53,64,36,0.06)"}}>{u.email}</td>
+                  <td style={{padding:"12px 15px",fontSize:13,color:C.m,borderBottom:"1px solid rgba(53,64,36,0.06)"}}>{u.role}</td>
+                  <td style={{padding:"12px 15px",fontSize:13,color:C.k,fontWeight:500,borderBottom:"1px solid rgba(53,64,36,0.06)"}}>{u.courses}</td>
+                  <td style={{padding:"12px 15px",borderBottom:"1px solid rgba(53,64,36,0.06)"}}><span style={{background:u.active?"rgba(53,64,36,0.1)":"rgba(53,64,36,0.05)",color:u.active?C.k:C.m,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700}}>{u.active?"Active":"Inactive"}</span></td>
+                  <td style={{padding:"12px 15px",borderBottom:"1px solid rgba(53,64,36,0.06)"}}><button onClick={()=>setUsers(users.filter(x=>x.id!==u.id))} style={{padding:"4px 12px",borderRadius:7,fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",border:"1.5px solid rgba(53,64,36,0.2)",background:"rgba(53,64,36,0.06)",color:C.k,fontWeight:600}}>Remove</button></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </>}
+        {tab==="analytics"&&<>
+          <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:C.k,margin:"0 0 18px"}}>Analytics 📈</h1>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:15,padding:"18px"}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:C.k,marginBottom:16}}>Enrollments by Category</div>
+              {[["ML & AI",65],["Web Dev",55],["Data Science",45],["Cloud",30],["Security",20],["DevOps",18],["Programming",15]].map(([cat,pct])=>(
+                <div key={cat} style={{marginBottom:13}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}><span style={{fontSize:12,color:C.k,fontWeight:600}}>{cat}</span><span style={{fontSize:11,color:C.m,fontWeight:500}}>{pct}%</span></div>
+                  <div style={{background:"rgba(53,64,36,0.1)",borderRadius:5,height:6}}><div style={{width:`${pct}%`,height:6,borderRadius:5,background:`linear-gradient(90deg,${C.k},${C.m})`}}/></div>
+                </div>
+              ))}
+            </div>
+            <div style={{background:C.t,border:"1.5px solid rgba(53,64,36,0.12)",borderRadius:15,padding:"18px"}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:C.k,marginBottom:16}}>User Breakdown</div>
+              {[["Students","58%"],["Working Professionals","25%"],["Career Switchers","12%"],["Freshers","5%"]].map(([r,pct])=>(
+                <div key={r} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid rgba(53,64,36,0.08)"}}><span style={{fontSize:13,color:C.k,fontWeight:500}}>{r}</span><span style={{fontSize:13,fontWeight:700,color:C.k}}>{pct}</span></div>
+              ))}
+            </div>
+          </div>
+        </>}
+      </main>
+    </div>
+  );
+}
+
+// ══ APP ROOT ══
+function App() {
+  const [user, setUser] = useState(null);
+  const [activeCourse, setActiveCourse] = useState(null);
+
+  if(!user) return <Landing onLogin={setUser}/>;
+  if(activeCourse) return <CoursePage course={activeCourse} onBack={()=>setActiveCourse(null)} user={user}/>;
+  if(user.isAdmin) return <AdminDashboard onLogout={()=>setUser(null)}/>;
+  return <Dashboard user={user} onLogout={()=>setUser(null)} onCourse={setActiveCourse}/>;
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App/>);
+</script>
+</body>
+</html>
